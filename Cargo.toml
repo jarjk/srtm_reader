@@ -10,7 +10,7 @@ authors = [
 description = "A performant srtm reader for .hgt files."
 repository = "https://github.com/JeromeSchmied/srtm_reader.git"
 
-keywords = ["srtm", "hgt", "elevation-data", "elevation", "parser"]
+keywords = ["srtm", "hgt", "elevation", "parser", "geo"]
 categories = ["science"]
 license = "BSD-3-Clause"
 
