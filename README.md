@@ -1,10 +1,10 @@
-# SRTM parser
+# SRTM reader
 
-Reads elevation data from `.hgt` files in Rust.
+A performant [srtm](https://www.earthdata.nasa.gov/sensors/srtm) reader for `.hgt` files in [Rust](https://rust-lang.org).
 
 ## Supported resolutions
 
--   0.5 angle second (SRTM05) <- I made it up, not sure that's how it's called
+-   0.5 angle second (SRTM05) <- *not sure that's how it's called*
 -   1 angle second (SRTM1)
 -   3 angle second (SRTM3)
 
@@ -13,13 +13,13 @@ Reads elevation data from `.hgt` files in Rust.
 ## Example
 
 ```rust
-use srtm::*;
+use srtm_reader::*;
 
 let coord = (13.3255424, 56.92856);
 // we get the filename, that shall include the elevation data for this `coord`
 let filename = srtm::get_filename(coord);
 // load the srtm, .hgt file
-// NOTE: to be able to actually load it, you'll need the actual file
+// NOTE: to be able to load it, you'll need the actual file
 let tile = srtm::Tile::from_file(filename).unwrap();
 // and finally, retrieve our elevation data
 let elevation = tile.get(coord);
@@ -27,10 +27,15 @@ let elevation = tile.get(coord);
 
 also, see [cli example](./examples/cli.rs) for a real-life one
 
-## _NOTE_
-
-a great source of srtm, `.hgt` files is [Sonny's collection](https://sonny.4lima.de/)
+> [!NOTE]
+> a great source of srtm data, `.hgt` files is [Sonny's collection](https://sonny.4lima.de/)
 
 ## Dependents
 
 -   [fit2gpx-rs](https://github.com/JeromeSchmied/fit2gpx-rs)
+-   *file an issue if yours could be listed as well*
+
+## Disclaimer
+
+this crate is a forked version of the [srtm crate](https://github.com/grtlr/srtm) which hasn't been updated in 6 years, and the PR hasn't been merged either in a long time.
+I've needed 0.5 angle support and also some more convenience methods for [fit2gpx-rs](https://github.com/JeromeSchmied/fit2gpx-rs), and here we are.
