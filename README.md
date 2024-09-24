@@ -17,10 +17,10 @@ use srtm_reader::*;
 
 let coord = (13.3255424, 56.92856);
 // we get the filename, that shall include the elevation data for this `coord`
-let filename = srtm::get_filename(coord);
+let filename = srtm_reader::get_filename(coord);
 // load the srtm, .hgt file
 // NOTE: to be able to load it, you'll need the actual file
-let tile = srtm::Tile::from_file(filename).unwrap();
+let tile = srtm_reader::Tile::from_file(filename).unwrap();
 // and finally, retrieve our elevation data
 let elevation = tile.get(coord);
 ```

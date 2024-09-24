@@ -11,9 +11,9 @@ impl From<Coord> for (f64, f64) {
         (coord.lat, coord.lon)
     }
 }
-impl From<Coord> for srtm::Coord {
+impl From<Coord> for srtm_reader::Coord {
     fn from(val: Coord) -> Self {
-        srtm::Coord::new(val.lat, val.lon)
+        srtm_reader::Coord::new(val.lat, val.lon)
     }
 }
 impl std::fmt::Display for Coord {
@@ -85,12 +85,12 @@ fn main() -> io::Result<()> {
     let elev_data_dir = PathBuf::from(elev_data_dir);
     // eprintln!("is tiff: {is_tiff}");
     // eprintln!("elev_data_dir: {}", elev_data_dir.display());
-    let file_name = srtm::get_filename(coord);
+    let file_name = srtm_reader::get_filename(coord);
     // eprintln!("file_name: {file_path}");
     let file_path = elev_data_dir.join(file_name);
     // eprintln!("path to .hgt file: {}", file_path.display());
 
-    let data = srtm::Tile::from_file(file_path).unwrap();
+    let data = srtm_reader::Tile::from_file(file_path).unwrap();
     // eprintln!("resolution: {:?}", data.resolution);
     let elevation = data.get(coord);
 

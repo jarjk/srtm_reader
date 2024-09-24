@@ -1,22 +1,26 @@
-//! srtm data: `.hgt` file parser
+//! A performant [srtm](https://www.earthdata.nasa.gov/sensors/srtm) reader for `.hgt` files.
 //!
-//! ```no_run
-//! use srtm::*;
+//! # Usage
+//!
+//! ```rust
+//! use srtm_reader::Tile;
 //! use std::path::PathBuf;
 //!
-//! let coord = (29.3255424, -14.92856);
+//! // the actual elevation of Veli Brig, 263m
+//! const TRUE_ELEV: i16 = 263;
+//! // the coordinates of Veli Brig, actual elevation: 263m
+//! let coord = (44.4480403, 15.0733053);
 //! // we get the filename, that shall include the elevation data for this `coord`
-//! let filename = srtm::get_filename(coord);
+//! let filename = srtm_reader::get_filename(coord);
 //! // in this case, the filename will be:
-//! assert_eq!(filename, "N29W014.hgt");
-//! // where all the srtm data: `.hgt` files are stored
-//! let elev_data_dir = PathBuf::from(env!("ELEV_DATA_DIR"));
-//! // where the data is located
-//! let filepath = elev_data_dir.join(filename);
-//! // load the srtm, .hgt file
-//! let tile = srtm::Tile::from_file(filepath).unwrap();
-//! // and finally, retrieve our elevation data
+//! assert_eq!(filename, "N44E015.hgt");
+//! // load the srtm tile: .hgt file
+//! let tile = Tile::from_file(filename).unwrap();
+//! // and finally, retrieve our elevation for Veli Brig
 //! let elevation = tile.get(coord);
+//! // test with a ± 5m
+//! assert!((TRUE_ELEV - 5..TRUE_ELEV + 5).contains(&elevation));
+//! println!("Veli Brig:\n\t- coordinates: {coord:?}\n\t- elevation\n\t\t- actual: {TRUE_ELEV}m\n\t\t- calculated: {elevation}m");
 //! ```
 
 use byteorder::{BigEndian, ReadBytesExt};
@@ -24,9 +28,11 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, Read};
 use std::path::Path;
 
+/// this many rows and columns are there in a standard SRTM1 file
 const EXTENT: usize = 3600;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+/// the available resulutions of the SRTM data, in arc seconds
+#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Debug)]
 pub enum Resolution {
     SRTM05,
     SRTM1,
@@ -34,6 +40,7 @@ pub enum Resolution {
 }
 
 impl Resolution {
+    /// the number of rows and columns in an SRTM data file of [`Resolution`]
     pub const fn extent(&self) -> usize {
         match self {
             Resolution::SRTM05 => EXTENT * 2 + 1,
@@ -41,11 +48,13 @@ impl Resolution {
             Resolution::SRTM3 => EXTENT / 3 + 1,
         }
     }
-    pub const fn total_size(&self) -> usize {
+    /// total file length in bytes
+    pub const fn total_len(&self) -> usize {
         self.extent().pow(2)
     }
 }
 
+/// the SRTM tile, which contains the actual elevation data
 #[derive(Debug)]
 pub struct Tile {
     pub latitude: i32,
@@ -54,24 +63,34 @@ pub struct Tile {
     pub data: Vec<i16>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     ParseLatLong,
     Filesize,
     Read,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// coordinates
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Coord {
+    /// latitude: north-south
     lat: f64,
+    /// longitude: east-west
     lon: f64,
 }
 impl Coord {
-    pub fn new<F1: Into<f64>, F2: Into<f64>>(lat: F1, lon: F2) -> Self {
-        Self {
-            lat: lat.into(),
-            lon: lon.into(),
-        }
+    pub fn new(lat: impl Into<f64>, lon: impl Into<f64>) -> Self {
+        let lat = lat.into();
+        let lon = lon.into();
+        assert!((-90. ..=90.).contains(&lat));
+        assert!((-180. ..=180.).contains(&lon));
+        Self { lat, lon }
+    }
+    pub fn with_lat(self, lat: impl Into<f64>) -> Self {
+        Self::new(lat, self.lon)
+    }
+    pub fn with_lon(self, lon: impl Into<f64>) -> Self {
+        Self::new(self.lat, lon)
     }
 
     /// truncate both latitude and longitude
@@ -172,11 +191,11 @@ fn get_resolution<P: AsRef<Path>>(path: P) -> Option<Resolution> {
     let from_metadata = |m: fs::Metadata| {
         let len = m.len() as usize;
         // eprintln!("len: {len}");
-        if len == Resolution::SRTM05.total_size() * 2 {
+        if len == Resolution::SRTM05.total_len() * 2 {
             Some(Resolution::SRTM05)
-        } else if len == Resolution::SRTM1.total_size() * 2 {
+        } else if len == Resolution::SRTM1.total_len() * 2 {
             Some(Resolution::SRTM1)
-        } else if len == Resolution::SRTM3.total_size() * 2 {
+        } else if len == Resolution::SRTM3.total_len() * 2 {
             Some(Resolution::SRTM3)
         } else {
             eprintln!("unknown filesize: {}", len);
@@ -189,7 +208,7 @@ fn get_resolution<P: AsRef<Path>>(path: P) -> Option<Resolution> {
         .and_then(from_metadata)
 }
 
-// FIXME Better error handling.
+// FIXME: Better error handling.
 fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i32, i32), Error> {
     let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
     let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
@@ -208,13 +227,14 @@ fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i32, i32), Error> {
 /// get the name of the file, which shall include this `coord`s elevation
 ///
 /// # Usage
+///
 /// ```rust
 /// // the `coord`inate, whe want the elevation for
 /// let coord = (87.235, 10.4234423);
 /// // this convenient function gives us the filename for
-/// // any `coord`inate, that `impl Into<srtm::Coord>`
-/// // which is done for this tuple
-/// let filename = srtm::get_filename(coord);
+/// // any `coord`inate, that is `impl Into<srtm_reader::Coord>`
+/// // which is true for this tuple
+/// let filename = srtm_reader::get_filename(coord);
 /// assert_eq!(filename, "N87E010.hgt");
 /// ```
 pub fn get_filename<C: Into<Coord>>(coord: C) -> String {
@@ -224,8 +244,9 @@ pub fn get_filename<C: Into<Coord>>(coord: C) -> String {
     let lat = (coord.lat.trunc() as i32).abs();
     let lon = (coord.lon.trunc() as i32).abs();
     format!(
-        "{lat_ch}{lat}{lon_ch}{}{lon}.hgt",
-        if lon == 0 {
+        "{lat_ch}{}{lat}{lon_ch}{}{lon}.hgt",
+        if lat < 10 { "0" } else { "" },
+        if lon < 10 {
             "00"
         } else if lon < 100 {
             "0"
@@ -238,7 +259,7 @@ fn parse<R: Read>(reader: R, res: Resolution) -> io::Result<Vec<i16>> {
     let mut reader = reader;
     let mut data = Vec::new();
     // eprintln!("total size: {}", res.total_size());
-    for _ in 0..res.total_size() {
+    for _ in 0..res.total_len() {
         // eprint!("{i} ");
         let h = reader.read_i16::<BigEndian>()?;
         data.push(h);
@@ -267,14 +288,96 @@ mod tests {
     }
     #[test]
     fn total_file_sizes() {
-        assert_eq!(103_708_802 / 2, Resolution::SRTM05.total_size());
-        assert_eq!(25_934_402 / 2, Resolution::SRTM1.total_size());
-        assert_eq!(2_884_802 / 2, Resolution::SRTM3.total_size());
+        assert_eq!(103_708_802 / 2, Resolution::SRTM05.total_len());
+        assert_eq!(25_934_402 / 2, Resolution::SRTM1.total_len());
+        assert_eq!(2_884_802 / 2, Resolution::SRTM3.total_len());
     }
     #[test]
     fn extents() {
         assert_eq!(7201, Resolution::SRTM05.extent());
         assert_eq!(3601, Resolution::SRTM1.extent());
         assert_eq!(1201, Resolution::SRTM3.extent());
+    }
+
+    #[test]
+    #[should_panic]
+    fn wrong_coord_0() {
+        let _ = Coord::new(-190, 42.4);
+    }
+    #[test]
+    #[should_panic]
+    fn wrong_coord_1() {
+        let _ = Coord::new(180, -42.4);
+    }
+    #[test]
+    #[should_panic]
+    fn wrong_coord_2() {
+        let _ = Coord::new(-90., 181.);
+    }
+    #[test]
+    #[should_panic]
+    fn wrong_coord_3() {
+        let _ = Coord::new(90., -180.00001);
+    }
+    #[test]
+    fn correct_coord_0() {
+        let _ = Coord::new(-90, 180);
+    }
+    #[test]
+    fn correct_coord_1() {
+        let _ = Coord::new(90, -180);
+    }
+    #[test]
+    fn correct_coord_2() {
+        let c = Coord::new(90, -180).with_lon(-85.7);
+        assert_eq!(Coord::new(90, -85.7), c);
+    }
+    #[test]
+    fn correct_coord_3() {
+        let c = Coord::new(90, -180).with_lat(0.3);
+        assert_eq!(Coord::new(0.3, -180), c);
+    }
+    #[test]
+    fn correct_coord_4() {
+        let c = Coord::new(90, -180).with_lat(0.3).with_lon(83.3);
+        assert_eq!(Coord::new(0.3, 83.3), c);
+    }
+    #[test]
+    fn correct_coord_5() {
+        let c: Coord = (90, -180).into();
+        let c = c.with_lat(0.3).with_lon(83.3);
+        assert_eq!(Coord::new(0.3, 83.3), c);
+    }
+    #[test]
+    fn correct_coord_6() {
+        let c: Coord = (90, -180).into();
+        let c = c.with_lat(0.3).with_lon(83.3);
+        assert_eq!(Coord::new(0.3, 83.3), c);
+    }
+    fn coords() -> [Coord; 3] {
+        [(45, 1.4).into(), (-2.3, 87).into(), (35, -7).into()]
+    }
+    #[test]
+    fn file_names() {
+        let fnames = coords()
+            .iter()
+            .map(|c| get_filename(*c))
+            .collect::<Vec<_>>();
+        assert_eq!(fnames[0], "N45E001.hgt");
+        assert_eq!(fnames[1], "S02E087.hgt");
+        assert_eq!(fnames[2], "N35W007.hgt");
+    }
+    #[test]
+    fn read() {
+        let coord = Coord::new(44.4480403, 15.0733053);
+        let fname = get_filename(coord);
+        let tile = Tile::from_file(fname).unwrap();
+        assert_eq!(tile.latitude, 44);
+        assert_eq!(tile.longitude, 15);
+        assert_eq!(tile.resolution, Resolution::SRTM1);
+        assert_eq!(tile.data.len(), Resolution::SRTM1.total_len());
+
+        let elev = tile.get(coord);
+        assert_eq!(elev, 258);
     }
 }

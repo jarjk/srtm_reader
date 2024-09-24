@@ -1,16 +1,16 @@
 [package]
-name = "srtm"
-version = "0.2.1"
+name = "srtm_reader"
+version = "0.3.0"
 edition = "2021"
 authors = [
   "Jochen Görtler <web@goertler.email>",
   "Jeromos Kovács <iitsnotme214@proton.me>",
 ]
 
-description = "Reads elevation data from `.hgt` files in Rust."
-repository = "https://github.com/grtlr/srtm.git"
+description = "A performant [srtm](https://www.earthdata.nasa.gov/sensors/srtm) reader for `.hgt` files."
+repository = "https://github.com/JeromeSchmied/srtm_reader.git"
 
-keywords = ["srtm", "hgt", "elevation-data"]
+keywords = ["srtm", "hgt", "elevation-data", "elevation", "parser"]
 categories = ["science"]
 license = "BSD-3-Clause"
 
