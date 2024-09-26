@@ -32,9 +32,10 @@ use std::path::Path;
 const EXTENT: usize = 3600;
 
 /// the available resulutions of the SRTM data, in arc seconds
-#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Debug, Default)]
 pub enum Resolution {
     SRTM05,
+    #[default]
     SRTM1,
     SRTM3,
 }
@@ -48,14 +49,14 @@ impl Resolution {
             Resolution::SRTM3 => EXTENT / 3 + 1,
         }
     }
-    /// total file length in bytes
+    /// total file length in BigEndian, total file length in bytes is [`Resolution::total_len()`] * 2
     pub const fn total_len(&self) -> usize {
         self.extent().pow(2)
     }
 }
 
 /// the SRTM tile, which contains the actual elevation data
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Tile {
     pub latitude: i32,
     pub longitude: i32,
@@ -71,7 +72,7 @@ pub enum Error {
 }
 
 /// coordinates
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
 pub struct Coord {
     /// latitude: north-south
     lat: f64,
@@ -91,6 +92,12 @@ impl Coord {
     }
     pub fn with_lon(self, lon: impl Into<f64>) -> Self {
         Self::new(self.lat, lon)
+    }
+    pub fn add_to_lat(self, lat: impl Into<f64>) -> Self {
+        self.with_lat(self.lat + lat.into())
+    }
+    pub fn add_to_lon(self, lon: impl Into<f64>) -> Self {
+        self.with_lon(self.lon + lon.into())
     }
 
     /// truncate both latitude and longitude
@@ -353,6 +360,12 @@ mod tests {
         let c: Coord = (90, -180).into();
         let c = c.with_lat(0.3).with_lon(83.3);
         assert_eq!(Coord::new(0.3, 83.3), c);
+    }
+    #[test]
+    fn correct_coord_7() {
+        let c: Coord = (-90, 180).into();
+        let c = c.add_to_lat(0.3252).add_to_lon(-3.2);
+        assert_eq!(Coord::new(-89.6748, 176.8), c);
     }
     fn coords() -> [Coord; 3] {
         [(45, 1.4).into(), (-2.3, 87).into(), (35, -7).into()]
