@@ -14,5 +14,7 @@ keywords = ["srtm", "hgt", "elevation", "parser", "geo"]
 categories = ["science"]
 license = "BSD-3-Clause"
 
+exclude = ["*.hgt"]
+
 [dependencies]
 byteorder = "1.5.0"
