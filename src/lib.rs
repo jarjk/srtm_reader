@@ -43,10 +43,10 @@ pub enum Resolution {
 impl Resolution {
     /// the number of rows and columns in an SRTM data file of [`Resolution`]
     pub const fn extent(&self) -> usize {
-        match self {
-            Resolution::SRTM05 => EXTENT * 2 + 1,
-            Resolution::SRTM1 => EXTENT + 1,
-            Resolution::SRTM3 => EXTENT / 3 + 1,
+        1 + match self {
+            Resolution::SRTM05 => EXTENT * 2,
+            Resolution::SRTM1 => EXTENT,
+            Resolution::SRTM3 => EXTENT / 3,
         }
     }
     /// total file length in BigEndian, total file length in bytes is [`Resolution::total_len()`] * 2
@@ -167,7 +167,7 @@ impl Tile {
     /// # Panics
     /// If this [`Tile`] doesn't contain `coord`'s elevation
     /// *NOTE*: shouldn't happen if [`get_filename()`] was used
-    pub fn get<C: Into<Coord>>(&self, coord: C) -> i16 {
+    pub fn get(&self, coord: impl Into<Coord>) -> i16 {
         let coord: Coord = coord.into();
         let offset = self.get_offset(coord);
         let lat = coord.lat.trunc() as i32;
@@ -191,7 +191,12 @@ impl Tile {
     }
 
     fn idx(&self, x: usize, y: usize) -> usize {
-        assert!(x < self.resolution.extent() && y < self.resolution.extent());
+        assert!(
+            x < self.resolution.extent() && y < self.resolution.extent(),
+            "extent: {}, x: {x}, y: {y}",
+            self.resolution.extent()
+        );
+        eprintln!("y: {y}, x: {x}");
         y * self.resolution.extent() + x
     }
 }
@@ -208,7 +213,7 @@ fn get_resolution<P: AsRef<Path>>(path: P) -> Option<Resolution> {
         } else if len == Resolution::SRTM3.total_len() * 2 {
             Some(Resolution::SRTM3)
         } else {
-            eprintln!("unknown filesize: {}", len);
+            eprintln!("unknown filesize: {len}");
             None
         }
     };
