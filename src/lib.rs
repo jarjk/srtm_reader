@@ -75,9 +75,9 @@ pub enum Error {
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
 pub struct Coord {
     /// latitude: north-south
-    lat: f64,
+    pub lat: f64,
     /// longitude: east-west
-    lon: f64,
+    pub lon: f64,
 }
 impl Coord {
     pub fn new(lat: impl Into<f64>, lon: impl Into<f64>) -> Self {
@@ -112,7 +112,7 @@ impl<F1: Into<f64>, F2: Into<f64>> From<(F1, F2)> for Coord {
     }
 }
 impl Tile {
-    fn new_empty(lat: i32, lon: i32, res: Resolution) -> Tile {
+    fn empty(lat: i32, lon: i32, res: Resolution) -> Tile {
         Tile {
             latitude: lat,
             longitude: lon,
@@ -129,7 +129,7 @@ impl Tile {
         let file = File::open(&path).map_err(|_| Error::Read)?;
         // eprintln!("file: {file:?}");
         let reader = BufReader::new(file);
-        let mut tile = Tile::new_empty(lat, lon, res);
+        let mut tile = Tile::empty(lat, lon, res);
         tile.data = parse(reader, tile.resolution).map_err(|e| {
             eprintln!("parse error: {e:#?}");
             Error::Read
@@ -139,7 +139,10 @@ impl Tile {
 
     /// the maximum height that this [`Tile`] contains
     pub fn max_height(&self) -> i16 {
-        *(self.data.iter().max().unwrap())
+        *self.data.iter().max().unwrap_or(&0)
+    }
+    pub fn min_height(&self) -> i16 {
+        *self.data.iter().min().unwrap_or(&0)
     }
     /// get lower-left corner's latitude and longitude
     /// it's needed for [`Tile::get_offset()`]
