@@ -2,6 +2,7 @@ use gpx::{Gpx, Waypoint};
 use rayon::prelude::*;
 use std::{
     collections::{BTreeSet, HashMap},
+    fs::File,
     io::BufReader,
     path::{Path, PathBuf},
 };
@@ -22,9 +23,6 @@ fn needed_coords(wps: &[Waypoint]) -> BTreeSet<(i32, i32)> {
 }
 
 fn read_tiles(needs: &[(i32, i32)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm_reader::Tile> {
-    if needs.is_empty() {
-        return vec![];
-    }
     let elev_data_dir = elev_data_dir.as_ref();
 
     needs
@@ -35,7 +33,7 @@ fn read_tiles(needs: &[(i32, i32)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm
         .collect::<Vec<_>>()
 }
 
-pub fn get_all_elev_data<'a>(
+fn get_all_elev_data<'a>(
     needs: &'a [(i32, i32)],
     tiles: &'a [srtm_reader::Tile],
 ) -> HashMap<&'a (i32, i32), &'a srtm_reader::Tile> {
@@ -140,11 +138,7 @@ fn main() {
     }
     let all_needed_coords: Vec<(i32, i32)> = all_needed_coords.iter().cloned().collect();
 
-    let elev_data_dir = if let Some(env_data_dir) = option_env!("ELEV_DATA_DIR") {
-        Path::new(env_data_dir)
-    } else {
-        panic!("no elevation data dir is passed as an arg nor set as an environment variable: ELEV_DATA_DIR");
-    };
+    let elev_data_dir = Path::new(env!("ELEV_DATA_DIR"));
     let tiles = read_tiles(&all_needed_coords, elev_data_dir);
     let elev_data = get_all_elev_data(&all_needed_coords, &tiles);
 
@@ -154,9 +148,7 @@ fn main() {
     // TODO: don't write, if nothing's changed
     gpxs.par_iter().enumerate().for_each(|(i, gpx)| {
         let path = args.get(i).unwrap();
-        let name = path.file_stem().map(|p| p.to_string_lossy()).unwrap();
-        let path = path.with_file_name(format!("{}_elev.gpx", name));
-        let fout = std::fs::File::create(&path).unwrap();
+        let fout = File::create(path).unwrap();
         // dbg!(path);
         gpx::write(gpx, fout).unwrap();
     });
