@@ -66,28 +66,9 @@ fn add_elev(
                 .expect("elevation data must be loaded");
             let elev = elev_data.get(coord);
             // TODO: appropriate check for invalid entry in SRTM
-            if !(-400..8000).contains(&elev) {
-                dbg!(coord);
-                dbg!(elev_data.get(coord));
-                dbg!(srtm_reader::get_filename((
-                    elev_data.latitude,
-                    elev_data.longitude
-                )));
-                dbg!(elev_data.latitude);
-                dbg!(elev_data.longitude);
-                dbg!(elev_data.resolution);
-                dbg!(elev_data.max_height());
-                dbg!(elev_data.resolution.total_len());
-                dbg!(elev_data
-                    .data
-                    .iter()
-                    .filter(|x| !(-400..4000).contains(*x))
-                    .count());
-            } else {
-                let mut x = has_changed.lock().unwrap();
-                *x = true;
-                wp.elevation = Some(elev as f64);
-            }
+            let mut x = has_changed.lock().unwrap();
+            *x = true;
+            wp.elevation = elev.map(|x| *x as f64);
         });
     let x = has_changed.lock().unwrap();
     *x

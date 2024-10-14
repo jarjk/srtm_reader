@@ -17,8 +17,8 @@
 //! // load the srtm tile: .hgt file
 //! let tile = Tile::from_file(filename).unwrap();
 //! // and finally, retrieve our elevation for Veli Brig
-//! let elevation = tile.get(coord);
-//! // test with a ± 5m
+//! let elevation = tile.get(coord).unwrap();
+//! // test with a ± 5m accuracy
 //! assert!((TRUE_ELEV - 5..TRUE_ELEV + 5).contains(&elevation));
 //! println!("Veli Brig:\n\t- coordinates: {coord:?}\n\t- elevation\n\t\t- actual: {TRUE_ELEV}m\n\t\t- calculated: {elevation}m");
 //! ```
@@ -167,7 +167,7 @@ impl Tile {
     /// # Panics
     /// If this [`Tile`] doesn't contain `coord`'s elevation
     /// *NOTE*: shouldn't happen if [`get_filename()`] was used
-    pub fn get(&self, coord: impl Into<Coord>) -> i16 {
+    pub fn get(&self, coord: impl Into<Coord>) -> Option<&i16> {
         let coord: Coord = coord.into();
         let offset = self.get_offset(coord);
         let lat = coord.lat.trunc() as i32;
@@ -182,12 +182,20 @@ impl Tile {
             "hgt lon: {}, coord lon: {lon}",
             self.longitude
         );
-        // eprintln!("offset: ({}, {})", offset.1, offset.0);
-        self.get_at_offset(offset.1, offset.0)
+        let elev = self.get_at_offset(offset.1, offset.0);
+        if elev.is_some_and(|e| *e == -9999) {
+            eprintln!(
+                "WARNING: in file {:?} {coord:?} doesn't contain a valid elevation: {elev:?}",
+                get_filename((self.latitude, self.longitude))
+            );
+            None
+        } else {
+            elev
+        }
     }
 
-    fn get_at_offset(&self, x: usize, y: usize) -> i16 {
-        self.data[self.idx(x, y)]
+    fn get_at_offset(&self, x: usize, y: usize) -> Option<&i16> {
+        self.data.get(self.idx(x, y))
     }
 
     fn idx(&self, x: usize, y: usize) -> usize {
@@ -398,6 +406,6 @@ mod tests {
         assert_eq!(tile.data.len(), Resolution::SRTM1.total_len());
 
         let elev = tile.get(coord);
-        assert_eq!(elev, 258);
+        assert_eq!(elev, Some(&258));
     }
 }

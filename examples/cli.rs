@@ -98,7 +98,7 @@ fn main() -> io::Result<()> {
     // let elevation = coord.get_elevation(&data);
     // coord.get_elevation(&data)
 
-    println!("Elevation at {coord} is {elevation} meters");
+    println!("Elevation at {coord} is {elevation:?} meters");
 
     Ok(())
 }
