@@ -196,7 +196,6 @@ impl Tile {
             "extent: {}, x: {x}, y: {y}",
             self.resolution.extent()
         );
-        eprintln!("y: {y}, x: {x}");
         y * self.resolution.extent() + x
     }
 }
