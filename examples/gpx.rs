@@ -5,6 +5,7 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 fn is_00(wp: &Waypoint) -> bool {
@@ -49,7 +50,8 @@ fn add_elev(
     wps: &mut [Waypoint],
     elev_data: &HashMap<&(i32, i32), &srtm_reader::Tile>,
     overwrite: bool,
-) {
+) -> bool {
+    let has_changed = Arc::new(Mutex::new(false));
     // coord is x,y but we need y,x
     let xy_yx = |wp: &Waypoint| -> srtm_reader::Coord {
         let (x, y) = wp.point().x_y();
@@ -82,25 +84,40 @@ fn add_elev(
                     .filter(|x| !(-400..4000).contains(*x))
                     .count());
             } else {
+                let mut x = has_changed.lock().unwrap();
+                *x = true;
                 wp.elevation = Some(elev as f64);
             }
         });
+    let x = has_changed.lock().unwrap();
+    *x
 }
 fn add_elev_gpx(
     gpx: &mut Gpx,
     elev_data: &HashMap<&(i32, i32), &srtm_reader::Tile>,
     overwrite: bool,
-) {
-    add_elev(&mut gpx.waypoints, elev_data, overwrite);
+) -> bool {
+    let changed_wps = add_elev(&mut gpx.waypoints, elev_data, overwrite);
+    let has_changed = Arc::new(Mutex::new(changed_wps));
+
     gpx.tracks.par_iter_mut().for_each(|track| {
-        track
-            .segments
-            .par_iter_mut()
-            .for_each(|trkseg| add_elev(&mut trkseg.points, elev_data, overwrite))
+        track.segments.par_iter_mut().for_each(|trkseg| {
+            let changed = add_elev(&mut trkseg.points, elev_data, overwrite);
+            if changed {
+                let mut x = has_changed.lock().unwrap();
+                *x = true;
+            }
+        })
     });
-    gpx.routes
-        .par_iter_mut()
-        .for_each(|route| add_elev(&mut route.points, elev_data, overwrite));
+    gpx.routes.par_iter_mut().for_each(|route| {
+        let changed = add_elev(&mut route.points, elev_data, overwrite);
+        if changed {
+            let mut x = has_changed.lock().unwrap();
+            *x = true;
+        }
+    });
+    let x = has_changed.lock().unwrap();
+    *x
 }
 
 fn main() {
@@ -142,14 +159,20 @@ fn main() {
     let tiles = read_tiles(&all_needed_coords, elev_data_dir);
     let elev_data = get_all_elev_data(&all_needed_coords, &tiles);
 
-    gpxs.par_iter_mut()
-        .for_each(|gpx| add_elev_gpx(gpx, &elev_data, false));
+    let states = gpxs
+        .par_iter_mut()
+        .map(|gpx| add_elev_gpx(gpx, &elev_data, false))
+        .collect::<Vec<_>>();
 
-    // TODO: don't write, if nothing's changed
     gpxs.par_iter().enumerate().for_each(|(i, gpx)| {
+        let should_write = states.get(i).unwrap();
         let path = args.get(i).unwrap();
-        let fout = File::create(path).unwrap();
-        // dbg!(path);
-        gpx::write(gpx, fout).unwrap();
+        if *should_write {
+            let fout = File::create(path).unwrap();
+            eprintln!("writing changes to {path:?}");
+            gpx::write(gpx, fout).unwrap();
+        } else {
+            eprintln!("didn't write any changes to {path:?}");
+        }
     });
 }
