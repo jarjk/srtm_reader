@@ -183,7 +183,7 @@ impl Tile {
             self.longitude
         );
         let elev = self.get_at_offset(offset.1, offset.0);
-        if elev.is_some_and(|e| *e == -9999) {
+        if elev.is_some_and(|e| *e == -9999 || *e == i16::MIN) {
             eprintln!(
                 "WARNING: in file {:?} {coord:?} doesn't contain a valid elevation: {elev:?}",
                 get_filename((self.latitude, self.longitude))
