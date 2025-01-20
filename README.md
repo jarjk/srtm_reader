@@ -28,7 +28,7 @@ let elevation = tile.get(coord);
 also, see [cli example](./examples/cli.rs) for a real-life one
 
 > [!NOTE]
-> a great source of srtm data, `.hgt` files is [Sonny's collection](https://sonny.4lima.de/)
+> a great source of DEM data, `.hgt` files is [Sonny's collection](https://sonny.4lima.de/)
 
 ## Dependents
 
