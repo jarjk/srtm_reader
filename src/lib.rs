@@ -66,6 +66,7 @@ pub struct Tile {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
+    NotFound,
     ParseLatLong,
     Filesize,
     Read,
@@ -123,6 +124,9 @@ impl Tile {
 
     /// read an srtm: `.hgt` file, and create a [`Tile`] if possible
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tile, Error> {
+        if !path.as_ref().exists() {
+            return Err(Error::NotFound);
+        }
         let (lat, lon) = get_lat_long(&path)?;
         let res = get_resolution(&path).ok_or(Error::Filesize)?;
         // eprintln!("resolution: {res:?}");
