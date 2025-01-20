@@ -41,7 +41,7 @@ fn quit_help(cx: &str) -> ! {
 
 Get elevation data for a coordinate from SRTM data (.hgt files).
 
-USAGE: elev_data [OPTIONS] <ARGS>
+USAGE: elev_data <ARGS> [OPTIONS]
 
 ARGS:  <LATITUDE_FLOAT,LONGITUDE_FLOAT> 
 
@@ -63,7 +63,7 @@ fn get_arg<'a>(args: &'a [String], arg: &str) -> Option<&'a String> {
 fn main() -> io::Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     let Some(coord) = args.first().map(Coord::parse) else {
-        quit_help("no coordinate recieved");
+        quit_help("no coordinate received");
     };
 
     // eprintln!("coord: {}", coord);
@@ -84,11 +84,11 @@ fn main() -> io::Result<()> {
 
     let data = srtm_reader::Tile::from_file(file_path).unwrap();
     // eprintln!("resolution: {:?}", data.resolution);
-    if get_arg(&args, "--max").is_some() {
+    if args.contains(&"--max".to_string()) {
         println!("max elevation in this file is {}", data.max_height());
         return Ok(());
     };
-    if get_arg(&args, "--min").is_some() {
+    if args.contains(&"--min".to_string()) {
         println!("min elevation in this file is {}", data.min_height());
         return Ok(());
     };
