@@ -53,6 +53,7 @@ OPTIONS:
     std::process::exit(1);
 }
 
+/// get value for `arg` from `args`
 fn get_arg<'a>(args: &'a [String], arg: &str) -> Option<&'a String> {
     args.iter()
         .enumerate()
