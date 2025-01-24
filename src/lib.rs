@@ -106,8 +106,8 @@ impl Coord {
     }
 
     /// truncate both latitude and longitude
-    pub fn trunc(&self) -> (i32, i32) {
-        (self.lat.trunc() as i32, self.lon.trunc() as i32)
+    pub fn trunc(&self) -> (i8, i16) {
+        (self.lat.trunc() as i8, self.lon.trunc() as i16)
     }
 }
 impl<F1: Into<f64>, F2: Into<f64>> From<(F1, F2)> for Coord {
