@@ -58,8 +58,12 @@ impl Resolution {
 /// the SRTM tile, which contains the actual elevation data
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Tile {
-    pub latitude: i32,
-    pub longitude: i32,
+    /// north-south position of the [`Tile`]
+    /// angle, ranges from −90° (south pole) to 90° (north pole), 0° is the Equator
+    pub latitude: i8,
+    /// east-west position of the [`Tile`]
+    /// angle, ranges from -180° to 180°
+    pub longitude: i16,
     pub resolution: Resolution,
     pub data: Vec<i16>,
 }
@@ -113,7 +117,7 @@ impl<F1: Into<f64>, F2: Into<f64>> From<(F1, F2)> for Coord {
     }
 }
 impl Tile {
-    fn empty(lat: i32, lon: i32, res: Resolution) -> Tile {
+    fn empty(lat: i8, lon: i16, res: Resolution) -> Tile {
         Tile {
             latitude: lat,
             longitude: lon,
@@ -174,8 +178,8 @@ impl Tile {
     pub fn get(&self, coord: impl Into<Coord>) -> Option<&i16> {
         let coord: Coord = coord.into();
         let offset = self.get_offset(coord);
-        let lat = coord.lat.trunc() as i32;
-        let lon = coord.lon.trunc() as i32;
+        let lat = coord.lat.trunc() as i8;
+        let lon = coord.lon.trunc() as i16;
         assert!(
             self.latitude <= lat,
             "hgt lat: {}, coord lat: {lat}",
@@ -235,7 +239,7 @@ fn get_resolution<P: AsRef<Path>>(path: P) -> Option<Resolution> {
 }
 
 // FIXME: Better error handling.
-fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i32, i32), Error> {
+fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i8, i16), Error> {
     let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
     let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
     if desc.len() != 7 {
@@ -244,10 +248,10 @@ fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i32, i32), Error> {
 
     let get_char = |n| desc.chars().nth(n).ok_or(Error::ParseLatLong);
     let lat_sign = if get_char(0)? == 'N' { 1 } else { -1 };
-    let lat: i32 = desc[1..3].parse().map_err(|_| Error::ParseLatLong)?;
+    let lat: i8 = desc[1..3].parse().map_err(|_| Error::ParseLatLong)?;
 
     let lon_sign = if get_char(3)? == 'E' { 1 } else { -1 };
-    let lon: i32 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
+    let lon: i16 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
     Ok((lat_sign * lat, lon_sign * lon))
 }
 /// get the name of the file, which shall include this `coord`s elevation
