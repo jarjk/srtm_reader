@@ -13,17 +13,17 @@ fn is_00(wp: &Waypoint) -> bool {
 }
 
 /// (y, x)
-fn needed_coords(wps: &[Waypoint]) -> BTreeSet<(i32, i32)> {
+fn needed_coords(wps: &[Waypoint]) -> BTreeSet<(i8, i16)> {
     // kinda Waypoint to (i32, i32)
-    let trunc = |wp: &Waypoint| -> (i32, i32) {
+    let trunc = |wp: &Waypoint| -> (i8, i16) {
         let (x, y) = wp.point().x_y();
-        (y.trunc() as i32, x.trunc() as i32)
+        (y.trunc() as i8, x.trunc() as i16)
     };
     // tiles we need
     wps.iter().filter(|wp| !is_00(wp)).map(trunc).collect()
 }
 
-fn read_tiles(needs: &[(i32, i32)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm_reader::Tile> {
+fn read_tiles(needs: &[(i8, i16)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm_reader::Tile> {
     let elev_data_dir = elev_data_dir.as_ref();
 
     needs
@@ -35,9 +35,9 @@ fn read_tiles(needs: &[(i32, i32)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm
 }
 
 fn get_all_elev_data<'a>(
-    needs: &'a [(i32, i32)],
+    needs: &'a [(i8, i16)],
     tiles: &'a [srtm_reader::Tile],
-) -> HashMap<&'a (i32, i32), &'a srtm_reader::Tile> {
+) -> HashMap<&'a (i8, i16), &'a srtm_reader::Tile> {
     assert_eq!(needs.len(), tiles.len());
     needs
         .par_iter()
@@ -48,7 +48,7 @@ fn get_all_elev_data<'a>(
 }
 fn add_elev(
     wps: &mut [Waypoint],
-    elev_data: &HashMap<&(i32, i32), &srtm_reader::Tile>,
+    elev_data: &HashMap<&(i8, i16), &srtm_reader::Tile>,
     overwrite: bool,
 ) -> bool {
     let has_changed = Arc::new(Mutex::new(false));
@@ -75,7 +75,7 @@ fn add_elev(
 }
 fn add_elev_gpx(
     gpx: &mut Gpx,
-    elev_data: &HashMap<&(i32, i32), &srtm_reader::Tile>,
+    elev_data: &HashMap<&(i8, i16), &srtm_reader::Tile>,
     overwrite: bool,
 ) -> bool {
     let changed_wps = add_elev(&mut gpx.waypoints, elev_data, overwrite);
@@ -134,7 +134,7 @@ fn main() {
             all_needed_coords.append(&mut needed_coords(&route.points));
         }
     }
-    let all_needed_coords: Vec<(i32, i32)> = all_needed_coords.iter().cloned().collect();
+    let all_needed_coords: Vec<(i8, i16)> = all_needed_coords.iter().cloned().collect();
 
     let elev_data_dir = Path::new(env!("ELEV_DATA_DIR"));
     let tiles = read_tiles(&all_needed_coords, elev_data_dir);
