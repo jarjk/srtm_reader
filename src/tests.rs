@@ -96,7 +96,7 @@ fn coords() -> [Coord; 3] {
 fn file_names() {
     let fnames = coords()
         .iter()
-        .map(|c| get_filename(*c))
+        .map(|c| Coord::from(*c).get_filename())
         .collect::<Vec<_>>();
     assert_eq!(fnames[0], "N45E001.hgt");
     assert_eq!(fnames[1], "S02E087.hgt");
@@ -105,7 +105,7 @@ fn file_names() {
 #[test]
 fn read() {
     let coord = Coord::new(44.4480403, 15.0733053);
-    let fname = get_filename(coord);
+    let fname = Coord::from(coord).get_filename();
     let tile = Tile::from_file(fname).unwrap();
     assert_eq!(tile.latitude, 44);
     assert_eq!(tile.longitude, 15);

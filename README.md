@@ -15,9 +15,9 @@ A performant [srtm](https://www.earthdata.nasa.gov/sensors/srtm) reader for `.hg
 ```rust
 use srtm_reader::*;
 
-let coord = (13.3255424, 56.92856);
+let coord = Coord::new(13.3255424, 56.92856);
 // we get the filename, that shall include the elevation data for this `coord`
-let filename = srtm_reader::get_filename(coord);
+let filename = coord.get_filename();
 // load the srtm, .hgt file
 // NOTE: to be able to load it, you'll need the actual file
 let tile = srtm_reader::Tile::from_file(filename).unwrap();

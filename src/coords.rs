@@ -32,6 +32,33 @@ impl Coord {
     pub fn trunc(&self) -> (i8, i16) {
         (self.lat.trunc() as i8, self.lon.trunc() as i16)
     }
+    /// get the name of the file, which shall include this `coord`s elevation
+    ///
+    /// # Usage
+    ///
+    /// ```rust
+    /// // the `coord`inate, whe want the elevation for
+    /// let coord = srtm_reader::Coord::new(87.235, 10.4234423);
+    /// let filename = coord.get_filename();
+    /// assert_eq!(filename, "N87E010.hgt");
+    /// ```
+    pub fn get_filename(self) -> String {
+        let lat_ch = if self.lat >= 0. { 'N' } else { 'S' };
+        let lon_ch = if self.lon >= 0. { 'E' } else { 'W' };
+        let lat = (self.lat.trunc() as i32).abs();
+        let lon = (self.lon.trunc() as i32).abs();
+        format!(
+            "{lat_ch}{}{lat}{lon_ch}{}{lon}.hgt",
+            if lat < 10 { "0" } else { "" },
+            if lon < 10 {
+                "00"
+            } else if lon < 100 {
+                "0"
+            } else {
+                ""
+            }
+        )
+    }
 }
 
 impl<F1: Into<f64>, F2: Into<f64>> From<(F1, F2)> for Coord {

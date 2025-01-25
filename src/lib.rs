@@ -3,15 +3,15 @@
 //! # Usage
 //!
 //! ```rust
-//! use srtm_reader::Tile;
+//! use srtm_reader::{Tile, Coord};
 //! use std::path::PathBuf;
 //!
 //! // the actual elevation of Veli Brig, 263m
 //! const TRUE_ELEV: i16 = 263;
 //! // the coordinates of Veli Brig, actual elevation: 263m
-//! let coord = (44.4480403, 15.0733053);
+//! let coord = Coord::new(44.4480403, 15.0733053);
 //! // we get the filename, that shall include the elevation data for this `coord`
-//! let filename = srtm_reader::get_filename(coord);
+//! let filename = coord.get_filename();
 //! // in this case, the filename will be:
 //! assert_eq!(filename, "N44E015.hgt");
 //! // load the srtm tile: .hgt file
@@ -131,7 +131,7 @@ impl Tile {
         if elev.is_some_and(|e| *e == -9999 || *e == i16::MIN) {
             eprintln!(
                 "WARNING: in file {:?} {coord:?} doesn't contain a valid elevation: {elev:?}",
-                get_filename((self.latitude, self.longitude))
+                Coord::new(self.latitude, self.longitude).get_filename()
             );
             None
         } else {
@@ -179,35 +179,4 @@ fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i8, i16), Error> {
     let lon_sign = if get_char(3)? == 'E' { 1 } else { -1 };
     let lon: i16 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
     Ok((lat_sign * lat, lon_sign * lon))
-}
-/// get the name of the file, which shall include this `coord`s elevation
-///
-/// # Usage
-///
-/// ```rust
-/// // the `coord`inate, whe want the elevation for
-/// let coord = (87.235, 10.4234423);
-/// // this convenient function gives us the filename for
-/// // any `coord`inate, that is `impl Into<srtm_reader::Coord>`
-/// // which is true for this tuple
-/// let filename = srtm_reader::get_filename(coord);
-/// assert_eq!(filename, "N87E010.hgt");
-/// ```
-pub fn get_filename<C: Into<Coord>>(coord: C) -> String {
-    let coord: Coord = coord.into();
-    let lat_ch = if coord.lat >= 0. { 'N' } else { 'S' };
-    let lon_ch = if coord.lon >= 0. { 'E' } else { 'W' };
-    let lat = (coord.lat.trunc() as i32).abs();
-    let lon = (coord.lon.trunc() as i32).abs();
-    format!(
-        "{lat_ch}{}{lat}{lon_ch}{}{lon}.hgt",
-        if lat < 10 { "0" } else { "" },
-        if lon < 10 {
-            "00"
-        } else if lon < 100 {
-            "0"
-        } else {
-            ""
-        }
-    )
 }
