@@ -74,7 +74,7 @@ impl Tile {
         let res = Resolution::try_from(f_len).map_err(|_| Error::Filesize)?;
         // eprintln!("resolution: {res:?}");
 
-        let (lat, lon) = get_lat_long(&path)?;
+        let (lat, lon) = Tile::get_lat_lon(&path)?;
         let mut tile = Tile::empty(lat, lon, res);
 
         tile.data = Self::parse_hgt(file, res).map_err(|_| Error::Read)?;
@@ -161,21 +161,20 @@ impl Tile {
         }
         Ok(elevations)
     }
-}
 
-// FIXME: Better error handling.
-fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i8, i16), Error> {
-    let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
-    let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
-    if desc.len() != 7 {
-        return Err(Error::ParseLatLong);
+    fn get_lat_lon<P: AsRef<Path>>(path: P) -> Result<(i8, i16), Error> {
+        let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
+        let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
+        if desc.len() != 7 {
+            return Err(Error::ParseLatLong);
+        }
+
+        let get_char = |n| desc.chars().nth(n).ok_or(Error::ParseLatLong);
+        let lat_sign = if get_char(0)? == 'N' { 1 } else { -1 };
+        let lat: i8 = desc[1..3].parse().map_err(|_| Error::ParseLatLong)?;
+
+        let lon_sign = if get_char(3)? == 'E' { 1 } else { -1 };
+        let lon: i16 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
+        Ok((lat_sign * lat, lon_sign * lon))
     }
-
-    let get_char = |n| desc.chars().nth(n).ok_or(Error::ParseLatLong);
-    let lat_sign = if get_char(0)? == 'N' { 1 } else { -1 };
-    let lat: i8 = desc[1..3].parse().map_err(|_| Error::ParseLatLong)?;
-
-    let lon_sign = if get_char(3)? == 'E' { 1 } else { -1 };
-    let lon: i16 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
-    Ok((lat_sign * lat, lon_sign * lon))
 }

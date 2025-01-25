@@ -4,16 +4,16 @@ use std::path::Path;
 #[test]
 fn parse_latitute_and_longitude() {
     let ne = Path::new("N35E138.hgt");
-    assert_eq!(get_lat_long(ne).unwrap(), (35, 138));
+    assert_eq!(Tile::get_lat_lon(ne).unwrap(), (35, 138));
 
     let nw = Path::new("N35W138.hgt");
-    assert_eq!(get_lat_long(nw).unwrap(), (35, -138));
+    assert_eq!(Tile::get_lat_lon(nw).unwrap(), (35, -138));
 
     let se = Path::new("S35E138.hgt");
-    assert_eq!(get_lat_long(se).unwrap(), (-35, 138));
+    assert_eq!(Tile::get_lat_lon(se).unwrap(), (-35, 138));
 
     let sw = Path::new("S35W138.hgt");
-    assert_eq!(get_lat_long(sw).unwrap(), (-35, -138));
+    assert_eq!(Tile::get_lat_lon(sw).unwrap(), (-35, -138));
 }
 #[test]
 fn total_file_sizes() {
