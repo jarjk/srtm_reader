@@ -22,12 +22,12 @@ pub struct Tile {
 // impl for pub fn-s
 impl Tile {
     /// create an empty [`Tile`]
-    pub fn new(lat: i8, lon: i16, res: Resolution) -> Tile {
+    pub fn new(lat: i8, lon: i16, res: Resolution, data: Vec<i16>) -> Tile {
         Tile {
             latitude: lat,
             longitude: lon,
             resolution: res,
-            data: Vec::with_capacity(res.total_len()),
+            data,
         }
     }
 
@@ -41,11 +41,10 @@ impl Tile {
         // eprintln!("resolution: {res:?}");
 
         let (lat, lon) = Tile::get_lat_lon(&path)?;
-        let mut tile = Tile::new(lat, lon, res);
 
-        tile.data = Self::parse_hgt(file, res).map_err(|_| Error::Read)?;
+        let elevation_data = Self::parse_hgt(file, res).map_err(|_| Error::Read)?;
 
-        Ok(tile)
+        Ok(Tile::new(lat, lon, res, elevation_data))
     }
 
     /// the maximum height that this [`Tile`] contains
