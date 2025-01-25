@@ -1,17 +1,17 @@
 [package]
 name = "srtm_reader"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2021"
 authors = [
   "Jochen Görtler <web@goertler.email>",
   "Jeromos Kovács <iitsnotme214@proton.me>",
 ]
 
-description = "A performant srtm reader for .hgt files."
+description = "A performant DTM(srtm) reader for .hgt files."
 repository = "https://github.com/JeromeSchmied/srtm_reader.git"
 
-keywords = ["srtm", "hgt", "elevation", "parser", "geo"]
-categories = ["science"]
+keywords = ["srtm", "hgt", "elevation", "parser", "dem"]
+categories = ["science", "geo"]
 license = "BSD-3-Clause"
 
 exclude = ["*.hgt"]
