@@ -21,7 +21,6 @@ pub struct Tile {
 
 // impl for pub fn-s
 impl Tile {
-    /// create an empty [`Tile`]
     pub fn new(lat: i8, lon: i16, res: Resolution, data: Vec<i16>) -> Tile {
         Tile {
             latitude: lat,
@@ -51,6 +50,7 @@ impl Tile {
     pub fn max_height(&self) -> i16 {
         *self.data.iter().max().unwrap_or(&0)
     }
+    /// the minimum height that this [`Tile`] contains
     pub fn min_height(&self) -> i16 {
         *self.data.iter().min().unwrap_or(&0)
     }
@@ -87,6 +87,7 @@ impl Tile {
         }
     }
 
+    /// extract the heights from the `hgt` content
     pub fn parse_hgt(mut reader: impl Read, res: Resolution) -> io::Result<Vec<i16>> {
         let mut buffer = vec![0; res.total_len() * 2];
         reader.read_exact(&mut buffer)?;
@@ -98,7 +99,10 @@ impl Tile {
         Ok(elevations)
     }
 
-    pub fn get_lat_lon<P: AsRef<Path>>(path: P) -> Result<(i8, i16), Error> {
+    /// extract the latitude and longitude from a filepath
+    /// let ne = Path::new("N35E138.hgt");
+    /// assert_eq!(Tile::get_lat_lon(ne).unwrap(), (35, 138));
+    pub fn get_lat_lon(path: impl AsRef<Path>) -> Result<(i8, i16), Error> {
         let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
         let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
         if desc.len() != 7 {
@@ -116,10 +120,14 @@ impl Tile {
 }
 // impl for non-pub fn-s
 impl Tile {
+    /// index `self` as if it was a matrix
     fn get_at_offset(&self, x: usize, y: usize) -> Option<&i16> {
         self.data.get(self.idx(x, y))
     }
 
+    /// convert an `x` `y` coordinate to an idx of `self`
+    /// # panics
+    /// if `self` doesn't contain the requested coordinate
     fn idx(&self, x: usize, y: usize) -> usize {
         assert!(
             x < self.resolution.extent() && y < self.resolution.extent(),
