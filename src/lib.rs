@@ -23,9 +23,8 @@
 //! println!("Veli Brig:\n\t- coordinates: {coord:?}\n\t- elevation\n\t\t- actual: {TRUE_ELEV}m\n\t\t- calculated: {elevation}m");
 //! ```
 
-use byteorder::{BigEndian, ReadBytesExt};
-use std::fs::{self, File};
-use std::io::{self, BufReader, Read};
+use std::fs::File;
+use std::io::{self, Read};
 use std::path::Path;
 
 /// this many rows and columns are there in a standard SRTM1 file
@@ -52,6 +51,23 @@ impl Resolution {
     /// total file length in BigEndian, total file length in bytes is [`Resolution::total_len()`] * 2
     pub const fn total_len(&self) -> usize {
         self.extent().pow(2)
+    }
+}
+impl TryFrom<u64> for Resolution {
+    type Error = ();
+
+    fn try_from(len: u64) -> Result<Self, Self::Error> {
+        let len = usize::try_from(len).map_err(|_| ())?;
+        if len == Resolution::SRTM05.total_len() * 2 {
+            Ok(Resolution::SRTM05)
+        } else if len == Resolution::SRTM1.total_len() * 2 {
+            Ok(Resolution::SRTM1)
+        } else if len == Resolution::SRTM3.total_len() * 2 {
+            Ok(Resolution::SRTM3)
+        } else {
+            eprintln!("unknown filesize: {len}");
+            Err(())
+        }
     }
 }
 
@@ -122,26 +138,24 @@ impl Tile {
             latitude: lat,
             longitude: lon,
             resolution: res,
-            data: Vec::new(),
+            data: Vec::with_capacity(res.total_len()),
         }
     }
 
     /// read an srtm: `.hgt` file, and create a [`Tile`] if possible
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tile, Error> {
-        if !path.as_ref().exists() {
-            return Err(Error::NotFound);
-        }
-        let (lat, lon) = get_lat_long(&path)?;
-        let res = get_resolution(&path).ok_or(Error::Filesize)?;
-        // eprintln!("resolution: {res:?}");
-        let file = File::open(&path).map_err(|_| Error::Read)?;
+        let file = File::open(&path).map_err(|_| Error::NotFound)?;
         // eprintln!("file: {file:?}");
-        let reader = BufReader::new(file);
+
+        let f_len = file.metadata().map_err(|_| Error::Filesize)?.len();
+        let res = Resolution::try_from(f_len).map_err(|_| Error::Filesize)?;
+        // eprintln!("resolution: {res:?}");
+
+        let (lat, lon) = get_lat_long(&path)?;
         let mut tile = Tile::empty(lat, lon, res);
-        tile.data = parse(reader, tile.resolution).map_err(|e| {
-            eprintln!("parse error: {e:#?}");
-            Error::Read
-        })?;
+
+        tile.data = parse_hgt(file, res).map_err(|_| Error::Read)?;
+
         Ok(tile)
     }
 
@@ -216,26 +230,15 @@ impl Tile {
     }
 }
 
-/// guess the resolution of the file at `path`
-fn get_resolution<P: AsRef<Path>>(path: P) -> Option<Resolution> {
-    let from_metadata = |m: fs::Metadata| {
-        let len = m.len() as usize;
-        // eprintln!("len: {len}");
-        if len == Resolution::SRTM05.total_len() * 2 {
-            Some(Resolution::SRTM05)
-        } else if len == Resolution::SRTM1.total_len() * 2 {
-            Some(Resolution::SRTM1)
-        } else if len == Resolution::SRTM3.total_len() * 2 {
-            Some(Resolution::SRTM3)
-        } else {
-            eprintln!("unknown filesize: {len}");
-            None
-        }
-    };
-    fs::metadata(path)
-        .inspect_err(|e| eprintln!("error: {e:#?}"))
-        .ok()
-        .and_then(from_metadata)
+fn parse_hgt(mut reader: impl Read, res: Resolution) -> io::Result<Vec<i16>> {
+    let mut buffer = vec![0; res.total_len() * 2];
+    reader.read_exact(&mut buffer)?;
+    let mut elevations = Vec::with_capacity(res.total_len());
+    for chunk in buffer.chunks_exact(2) {
+        let value = i16::from_be_bytes([chunk[0], chunk[1]]);
+        elevations.push(value);
+    }
+    Ok(elevations)
 }
 
 // FIXME: Better error handling.
@@ -284,17 +287,6 @@ pub fn get_filename<C: Into<Coord>>(coord: C) -> String {
             ""
         }
     )
-}
-fn parse<R: Read>(reader: R, res: Resolution) -> io::Result<Vec<i16>> {
-    let mut reader = reader;
-    let mut data = Vec::new();
-    // eprintln!("total size: {}", res.total_size());
-    for _ in 0..res.total_len() {
-        // eprint!("{i} ");
-        let h = reader.read_i16::<BigEndian>()?;
-        data.push(h);
-    }
-    Ok(data)
 }
 
 #[cfg(test)]
