@@ -77,7 +77,7 @@ impl Tile {
         let (lat, lon) = get_lat_long(&path)?;
         let mut tile = Tile::empty(lat, lon, res);
 
-        tile.data = parse_hgt(file, res).map_err(|_| Error::Read)?;
+        tile.data = Self::parse_hgt(file, res).map_err(|_| Error::Read)?;
 
         Ok(tile)
     }
@@ -151,17 +151,16 @@ impl Tile {
         );
         y * self.resolution.extent() + x
     }
-}
-
-fn parse_hgt(mut reader: impl Read, res: Resolution) -> io::Result<Vec<i16>> {
-    let mut buffer = vec![0; res.total_len() * 2];
-    reader.read_exact(&mut buffer)?;
-    let mut elevations = Vec::with_capacity(res.total_len());
-    for chunk in buffer.chunks_exact(2) {
-        let value = i16::from_be_bytes([chunk[0], chunk[1]]);
-        elevations.push(value);
+    fn parse_hgt(mut reader: impl Read, res: Resolution) -> io::Result<Vec<i16>> {
+        let mut buffer = vec![0; res.total_len() * 2];
+        reader.read_exact(&mut buffer)?;
+        let mut elevations = Vec::with_capacity(res.total_len());
+        for chunk in buffer.chunks_exact(2) {
+            let value = i16::from_be_bytes([chunk[0], chunk[1]]);
+            elevations.push(value);
+        }
+        Ok(elevations)
     }
-    Ok(elevations)
 }
 
 // FIXME: Better error handling.
