@@ -1,6 +1,6 @@
-# SRTM reader
+# SRTM/HGT reader
 
-A performant [srtm](https://www.earthdata.nasa.gov/sensors/srtm) reader for `.hgt` files in [Rust](https://rust-lang.org).
+A performant DTM[(srtm)](https://www.earthdata.nasa.gov/sensors/srtm) reader for `.hgt` files in [Rust](https://rust-lang.org).
 
 ## Supported resolutions
 
