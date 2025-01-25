@@ -42,7 +42,7 @@ impl Coord {
     /// # Usage
     ///
     /// ```rust
-    /// // the `coord`inate, whe want the elevation for
+    /// // the `coord`inate, we want the elevation for
     /// let coord = srtm_reader::Coord::new(87.235, 10.4234423);
     /// let filename = coord.get_filename();
     /// assert_eq!(filename, "N87E010.hgt");
@@ -50,8 +50,8 @@ impl Coord {
     pub fn get_filename(self) -> String {
         let lat_ch = if self.lat >= 0. { 'N' } else { 'S' };
         let lon_ch = if self.lon >= 0. { 'E' } else { 'W' };
-        let lat = (self.lat.trunc() as i32).abs();
-        let lon = (self.lon.trunc() as i32).abs();
+        let (lat, lon) = self.trunc();
+        let (lat, lon) = (lat.abs(), lon.abs());
         format!(
             "{lat_ch}{}{lat}{lon_ch}{}{lon}.hgt",
             if lat < 10 { "0" } else { "" },

@@ -63,8 +63,7 @@ impl Tile {
     pub fn get(&self, coord: impl Into<Coord>) -> Option<&i16> {
         let coord: Coord = coord.into();
         let offset = self.get_offset(coord);
-        let lat = coord.lat.trunc() as i8;
-        let lon = coord.lon.trunc() as i16;
+        let (lat, lon) = coord.trunc();
         assert!(
             self.latitude <= lat,
             "hgt lat: {}, coord lat: {lat}",

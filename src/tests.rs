@@ -2,7 +2,7 @@ use super::*;
 use std::path::Path;
 
 #[test]
-fn parse_latitute_and_longitude() {
+fn parse_latidute_and_longitude() {
     let ne = Path::new("/tmp/N35E138.hgt");
     assert_eq!(Tile::get_lat_lon(ne).unwrap(), (35, 138));
 
