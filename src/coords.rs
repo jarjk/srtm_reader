@@ -8,12 +8,17 @@ pub struct Coord {
 }
 
 impl Coord {
-    pub fn new(lat: impl Into<f64>, lon: impl Into<f64>) -> Self {
+    pub fn opt_new(lat: impl Into<f64>, lon: impl Into<f64>) -> Option<Self> {
         let lat = lat.into();
         let lon = lon.into();
-        assert!((-90. ..=90.).contains(&lat));
-        assert!((-180. ..=180.).contains(&lon));
-        Self { lat, lon }
+        if (-90. ..=90.).contains(&lat) && (-180. ..=180.).contains(&lon) {
+            Some(Self { lat, lon })
+        } else {
+            None
+        }
+    }
+    pub fn new(lat: impl Into<f64>, lon: impl Into<f64>) -> Self {
+        Self::opt_new(lat, lon).expect("latitude must be between -90 and 90 degrees, longitude must be between -180 and 180 degrees")
     }
     pub fn with_lat(self, lat: impl Into<f64>) -> Self {
         Self::new(lat, self.lon)
