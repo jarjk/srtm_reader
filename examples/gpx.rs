@@ -28,7 +28,7 @@ fn read_tiles(needs: &[(i8, i16)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm_
 
     needs
         .par_iter()
-        .map(|c| srtm_reader::get_filename(*c))
+        .map(|c| srtm_reader::Coord::from(*c).get_filename())
         .map(|t| elev_data_dir.join(t))
         .flat_map(|p| srtm_reader::Tile::from_file(p).inspect_err(|e| eprintln!("error: {e:#?}")))
         .collect::<Vec<_>>()

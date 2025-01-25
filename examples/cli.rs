@@ -78,7 +78,7 @@ fn main() -> io::Result<()> {
     let elev_data_dir = PathBuf::from(elev_data_dir);
     // eprintln!("is tiff: {is_tiff}");
     // eprintln!("elev_data_dir: {}", elev_data_dir.display());
-    let file_name = srtm_reader::get_filename(coord.0);
+    let file_name = coord.0.get_filename();
     // eprintln!("file_name: {file_path}");
     let file_path = elev_data_dir.join(file_name);
     // eprintln!("path to .hgt file: {}", file_path.display());
