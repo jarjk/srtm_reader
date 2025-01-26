@@ -20,10 +20,13 @@ fn needed_coords(wps: &[Waypoint]) -> BTreeSet<(i8, i16)> {
         (y.trunc() as i8, x.trunc() as i16)
     };
     // tiles we need
-    wps.iter().filter(|wp| !is_00(wp)).map(trunc).collect()
+    wps.par_iter().filter(|wp| !is_00(wp)).map(trunc).collect()
 }
 
-fn read_tiles(needs: &[(i8, i16)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm_reader::Tile> {
+fn read_tiles(
+    needs: &BTreeSet<(i8, i16)>,
+    elev_data_dir: impl AsRef<Path>,
+) -> Vec<srtm_reader::Tile> {
     let elev_data_dir = elev_data_dir.as_ref();
 
     needs
@@ -34,21 +37,16 @@ fn read_tiles(needs: &[(i8, i16)], elev_data_dir: impl AsRef<Path>) -> Vec<srtm_
         .collect::<Vec<_>>()
 }
 
-fn get_all_elev_data<'a>(
-    needs: &'a [(i8, i16)],
-    tiles: &'a [srtm_reader::Tile],
-) -> HashMap<&'a (i8, i16), &'a srtm_reader::Tile> {
-    assert_eq!(needs.len(), tiles.len());
-    needs
+fn index_tiles<'a>(tiles: &'a [srtm_reader::Tile]) -> HashMap<(i8, i16), &'a srtm_reader::Tile> {
+    tiles
         .par_iter()
-        .enumerate()
-        .map(|(i, coord)| (coord, tiles.get(i).unwrap()))
-        .collect::<HashMap<_, _>>()
+        .map(|tile| ((tile.latitude, tile.longitude), tile))
+        .collect()
     // eprintln!("loaded elevation data: {:?}", all_elev_data.keys());
 }
 fn add_elev(
     wps: &mut [Waypoint],
-    elev_data: &HashMap<&(i8, i16), &srtm_reader::Tile>,
+    elev_data: &HashMap<(i8, i16), &srtm_reader::Tile>,
     overwrite: bool,
 ) -> bool {
     let has_changed = Arc::new(Mutex::new(false));
@@ -75,7 +73,7 @@ fn add_elev(
 }
 fn add_elev_gpx(
     gpx: &mut Gpx,
-    elev_data: &HashMap<&(i8, i16), &srtm_reader::Tile>,
+    elev_data: &HashMap<(i8, i16), &srtm_reader::Tile>,
     overwrite: bool,
 ) -> bool {
     let changed_wps = add_elev(&mut gpx.waypoints, elev_data, overwrite);
@@ -116,9 +114,7 @@ fn main() {
 
     let mut gpxs = gpx_contents
         .par_iter()
-        .flat_map(|j| {
-            gpx::read(BufReader::new(j.as_bytes())).inspect_err(|e| eprintln!("error: {e:#?}"))
-        })
+        .flat_map(|j| gpx::read(j.as_bytes()).inspect_err(|e| eprintln!("error: {e:#?}")))
         .collect::<Vec<_>>();
 
     let mut all_needed_coords = BTreeSet::new();
@@ -134,11 +130,10 @@ fn main() {
             all_needed_coords.append(&mut needed_coords(&route.points));
         }
     }
-    let all_needed_coords: Vec<(i8, i16)> = all_needed_coords.iter().cloned().collect();
 
     let elev_data_dir = Path::new(env!("ELEV_DATA_DIR"));
     let tiles = read_tiles(&all_needed_coords, elev_data_dir);
-    let elev_data = get_all_elev_data(&all_needed_coords, &tiles);
+    let elev_data = index_tiles(&tiles);
 
     let states = gpxs
         .par_iter_mut()
