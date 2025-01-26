@@ -3,7 +3,6 @@ use rayon::prelude::*;
 use std::{
     collections::{BTreeSet, HashMap},
     fs::File,
-    io::BufReader,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -33,7 +32,10 @@ fn read_tiles(
         .par_iter()
         .map(|c| srtm_reader::Coord::from(*c).get_filename())
         .map(|t| elev_data_dir.join(t))
-        .flat_map(|p| srtm_reader::Tile::from_file(p).inspect_err(|e| eprintln!("error: {e:#?}")))
+        .flat_map(|p| {
+            srtm_reader::Tile::from_file(&p)
+                .inspect_err(|e| eprintln!("error reading {p:?}: {e:?}"))
+        })
         .collect::<Vec<_>>()
 }
 
@@ -59,14 +61,12 @@ fn add_elev(
         .filter(|wp| (wp.elevation.is_none() || overwrite) && !is_00(wp))
         .for_each(|wp| {
             let coord = xy_yx(wp);
-            let elev_data = elev_data
-                .get(&coord.trunc())
-                .expect("elevation data must be loaded");
-            let elev = elev_data.get(coord);
-            // TODO: appropriate check for invalid entry in SRTM
-            let mut x = has_changed.lock().unwrap();
-            *x = true;
-            wp.elevation = elev.map(|x| *x as f64);
+            if let Some(elev_data) = elev_data.get(&coord.trunc()) {
+                let elev = elev_data.get(coord);
+                let mut x = has_changed.lock().unwrap();
+                *x = true;
+                wp.elevation = elev.map(|x| *x as f64);
+            }
         });
     let x = has_changed.lock().unwrap();
     *x
@@ -148,7 +148,7 @@ fn main() {
             eprintln!("writing changes to {path:?}");
             gpx::write(gpx, fout).unwrap();
         } else {
-            eprintln!("didn't write any changes to {path:?}");
+            eprintln!("didn't overwrite {path:?}");
         }
     });
 }
