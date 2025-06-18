@@ -8,7 +8,7 @@ authors = [
 ]
 
 description = "A performant DTM(srtm) reader for .hgt files."
-repository = "https://github.com/JeromeSchmied/srtm_reader.git"
+repository = "https://github.com/jarjk/srtm_reader.git"
 
 keywords = ["srtm", "hgt", "elevation", "dtm", "dem"]
 categories = ["science::geo", "parsing", "parser-implementations"]
