@@ -32,10 +32,10 @@ also, see [cli example](./examples/cli.rs) for a real-life one
 
 ## Dependents
 
--   [fit2gpx-rs](https://github.com/JeromeSchmied/fit2gpx-rs)
+-   [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs)
 -   *file an issue if yours could be listed as well*
 
 ## Disclaimer
 
 this crate is a forked version of the [srtm crate](https://github.com/grtlr/srtm) which hasn't been updated in 6 years, and the PR hasn't been merged either in a long time.
-I've needed 0.5 angle support and also some more convenience methods for [fit2gpx-rs](https://github.com/JeromeSchmied/fit2gpx-rs), and here we are.
+I've needed 0.5 angle support and also some more convenience methods for [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs), and here we are.
