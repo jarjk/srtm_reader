@@ -63,19 +63,22 @@ fn correct_coords() {
     let c = c.add_to_lat(0.3252).add_to_lon(-3.2);
     assert_eq!(Coord::new(-89.6748, 176.8), c);
 }
-fn coords() -> [Coord; 3] {
-    [(45, 1.4).into(), (-2.3, 87).into(), (35, -7).into()]
-}
+
 #[test]
 fn file_names() {
-    let fnames = coords()
-        .iter()
-        .map(|c| Coord::from(*c).get_filename())
-        .collect::<Vec<_>>();
-    assert_eq!(fnames, ["N45E001.hgt", "S02E087.hgt", "N35W007.hgt"]);
+    const TEST_VALUES: &[((f64, f64), &str)] = &[
+        ((45., 1.4), "N45E001.hgt"),  // NE
+        ((-2.3, 87.), "S02E087.hgt"), // SE
+        ((35., -7.), "N35W007.hgt"),  // NW
+        ((-5., -7.), "S05W007.hgt"),  // SW
+    ];
+
+    for (coord, filename) in TEST_VALUES {
+        assert_eq!(&Coord::from(*coord).get_filename(), filename);
+    }
 }
 #[test]
-fn read() {
+fn read_north_east() {
     let coord = Coord::new(44.4480403, 15.0733053);
     let fname = coord.get_filename();
     let tile = Tile::from_file(fname).unwrap();
@@ -85,5 +88,36 @@ fn read() {
     assert_eq!(tile.data.len(), Resolution::SRTM1.total_len());
 
     let elev = tile.get(coord);
-    assert_eq!(elev, Some(&258));
+    assert_eq!(elev, Some(&258)); // Validated manually with QGis
+}
+
+/// Test at exactly (44,15)
+#[test]
+fn read_integer_coords_north_east_origin() {
+    let coord = Coord::new(44.0, 15.0);
+    let fname = coord.get_filename();
+    let tile = Tile::from_file(fname).unwrap();
+    assert_eq!(tile.latitude, 44);
+    assert_eq!(tile.longitude, 15);
+    assert_eq!(tile.resolution, Resolution::SRTM1);
+    assert_eq!(tile.data.len(), Resolution::SRTM1.total_len());
+
+    // Check Bottom Left corner
+    let elev = tile.get(coord);
+    assert_eq!(elev, Some(&0)); // Inside water. Validated manually with QGis
+
+    // Check Top left corner
+    let coord = Coord::new(45.0, 15.0);
+    let elev = tile.get(coord);
+    assert_eq!(elev, Some(&858));
+
+    // Check Top right corner
+    let coord = Coord::new(45.0, 16.0);
+    let elev = tile.get(coord);
+    assert_eq!(elev, Some(&498));
+
+    // Check Bottom right corner
+    let coord = Coord::new(44.0, 16.0);
+    let elev = tile.get(coord);
+    assert_eq!(elev, Some(&239));
 }

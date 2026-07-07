@@ -88,7 +88,7 @@ impl Tile {
 
     /// extract the heights from the `hgt` content
     pub fn parse_hgt(mut reader: impl Read, res: Resolution) -> io::Result<Vec<i16>> {
-        let mut buffer = vec![0; res.total_len() * 2];
+        let mut buffer = vec![0; res.total_len() * Resolution::BYTES_PER_ELEVATION];
         reader.read_exact(&mut buffer)?;
         let mut elevations = Vec::with_capacity(res.total_len());
         for chunk in buffer.chunks_exact(2) {
@@ -135,21 +135,24 @@ impl Tile {
         );
         y * self.resolution.extent() + x
     }
-    /// get lower-left corner's latitude and longitude
+    /// get upper-left corner's latitude and longitude
     /// it's needed for [`Tile::get_offset()`]
-    fn get_origin(&self, coord: Coord) -> Coord {
-        let lat = coord.lat.trunc() + 1.; // The latitude of the lower-left corner of the tile
-        let lon = coord.lon.trunc(); // The longitude of the lower-left corner of the tile
+    /// The upper left corner is the value at (0, 0) in the
+    /// data vector.
+    fn get_data_origin(&self) -> Coord {
+        let lat = f64::from(self.latitude) + 1.;
+        let lon = f64::from(self.longitude);
         Coord { lat, lon }
     }
     /// calculate where this `coord` is located in this [`Tile`]
     fn get_offset(&self, coord: Coord) -> (usize, usize) {
-        let origin = self.get_origin(coord);
+        let origin = self.get_data_origin();
         // eprintln!("origin: ({}, {})", origin.0, origin.1);
-        let extent = self.resolution.extent() as f64;
+        // `extent` samples span exactly 1 degree, so there are `extent - 1` intervals between them
+        let intervals = (self.resolution.extent() - 1) as f64;
 
-        let row = ((origin.lat - coord.lat) * extent) as usize;
-        let col = ((coord.lon - origin.lon) * extent) as usize;
+        let row = ((origin.lat - coord.lat) * intervals) as usize;
+        let col = ((coord.lon - origin.lon) * intervals) as usize;
         (row, col)
     }
 }
