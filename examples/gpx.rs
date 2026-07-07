@@ -105,6 +105,8 @@ fn main() {
         .map(PathBuf::from)
         .collect::<Vec<PathBuf>>();
     dbg!(&args);
+    let elevation_dir = std::env::var("ELEV_DATA_DIR")
+        .expect("ELEV_DATA_DIR not set. Please set it to the directory containing the .hgt files");
 
     let gpx_contents = args
         .par_iter()
@@ -131,7 +133,7 @@ fn main() {
         }
     }
 
-    let elev_data_dir = Path::new(env!("ELEV_DATA_DIR"));
+    let elev_data_dir = Path::new(&elevation_dir);
     let tiles = read_tiles(&all_needed_coords, elev_data_dir);
     let elev_data = index_tiles(&tiles);
 
