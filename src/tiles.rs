@@ -59,7 +59,7 @@ impl Tile {
     ///
     /// # Panics
     /// If this [`Tile`] doesn't contain `coord`'s elevation
-    /// *NOTE*: shouldn't happen if [`get_filename()`] was used
+    /// *NOTE*: shouldn't happen if [`Coord::get_filename()`] was used
     pub fn get(&self, coord: impl Into<Coord>) -> Option<&i16> {
         let coord: Coord = coord.into();
         let offset = self.get_offset(coord);

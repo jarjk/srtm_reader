@@ -52,17 +52,7 @@ impl Coord {
         let lon_ch = if self.lon >= 0. { 'E' } else { 'W' };
         let (lat, lon) = self.trunc();
         let (lat, lon) = (lat.abs(), lon.abs());
-        format!(
-            "{lat_ch}{}{lat}{lon_ch}{}{lon}.hgt",
-            if lat < 10 { "0" } else { "" },
-            if lon < 10 {
-                "00"
-            } else if lon < 100 {
-                "0"
-            } else {
-                ""
-            }
-        )
+        format!("{lat_ch}{lat:02}{lon_ch}{lon:03}.hgt")
     }
 }
 

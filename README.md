@@ -15,14 +15,17 @@ A performant DTM[(srtm)](https://www.earthdata.nasa.gov/sensors/srtm) reader for
 ```rust
 use srtm_reader::*;
 
-let coord = Coord::new(13.3255424, 56.92856);
+let coord = Coord::new(44.32554, 15.92856);
 // we get the filename, that shall include the elevation data for this `coord`
 let filename = coord.get_filename();
+// in this case, the filename will be:
+assert_eq!(filename, "N44E015.hgt");
 // load the srtm, .hgt file
-// NOTE: to be able to load it, you'll need the actual file
+// NOTE: this file is included in the repo
 let tile = srtm_reader::Tile::from_file(filename).unwrap();
 // and finally, retrieve our elevation data
 let elevation = tile.get(coord);
+println!("elevation for coordinates ({coord:?}): {elevation:?}m");
 ```
 
 also, see [cli example](./examples/cli.rs) for a real-life one
@@ -35,7 +38,8 @@ also, see [cli example](./examples/cli.rs) for a real-life one
 -   [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs)
 -   *file an issue if yours could be listed as well*
 
-## Disclaimer
+## Disclaimer, Acknowledgement
 
-this crate is a forked version of the [srtm crate](https://github.com/grtlr/srtm) which hasn't been updated in 6 years, and the PR hasn't been merged either in a long time.
-I've needed 0.5 angle support and also some more convenience methods for [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs), and here we are.
+This crate is a forked version of the [srtm crate](https://github.com/grtlr/srtm) which hasn't been updated since 2018.
+I've needed 0.5 angle support and also some further convenience methods for [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs),
+but my PR for the improvements hasn't been merged for a long-long time, so here we are.
