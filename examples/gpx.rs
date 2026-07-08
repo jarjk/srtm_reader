@@ -39,7 +39,7 @@ fn read_tiles(
         .collect::<Vec<_>>()
 }
 
-fn index_tiles<'a>(tiles: &'a [srtm_reader::Tile]) -> HashMap<(i8, i16), &'a srtm_reader::Tile> {
+fn index_tiles(tiles: &[srtm_reader::Tile]) -> HashMap<(i8, i16), &srtm_reader::Tile> {
     tiles
         .par_iter()
         .map(|tile| ((tile.latitude, tile.longitude), tile))
