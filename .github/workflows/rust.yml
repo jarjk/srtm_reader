@@ -31,7 +31,7 @@ jobs:
 
   auto-release-tag:
     name: Release on tag push
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     needs: check-test-build
     steps:
