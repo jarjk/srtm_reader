@@ -1,23 +1,57 @@
-name: Rust
+name: Check build errors, clippy, formatting, run tests
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
+    tags: ["v*.*.*"]
   pull_request:
-    branches: [ "master" ]
+  workflow_dispatch:
+  workflow_call:
 
 env:
   CARGO_TERM_COLOR: always
   ELEV_DATA_DIR: .
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  check-test-build:
+    runs-on: ubuntu-latest # could be extended with windows, mac
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v7
+      - uses: swatinem/rust-cache@v2
+
+      - name: Check for errors
+        run: cargo check --all-targets --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Check code formatting
+        run: cargo fmt --all --check --verbose
+      - name: Check code with clippy
+        run: cargo clippy --all-targets --verbose
+
+  auto-release-tag:
+    name: Release on tag push
+    runs-on: ubuntu-slim
+    if: github.ref_type == 'tag'
+    needs: check-test-build
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create a GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          # draft: true
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+
+      - name: Publish to crates.io
+        shell: bash
+        run: |
+          version="v$(grep version Cargo.toml | head -n1 | cut -d '"' -f2)"
+          git_tag="$(basename ${{ github.ref }})"
+          echo "::notice::Cargo.toml version is: '$version', github tag is: '$git_tag'"
+          if [ "$version" == "$git_tag" ]; then
+            cargo publish --token "${{ secrets.CRATESIO_TOKEN }}" --verbose
+          else
+            echo "::warning title=Version mismatch::they don't match, not uploading!"
+          fi
