@@ -67,10 +67,11 @@ fn correct_coords() {
 #[test]
 fn file_names() {
     const TEST_VALUES: &[((f64, f64), &str)] = &[
-        ((45., 1.4), "N45E001.hgt"),  // NE
-        ((-2.3, 87.), "S02E087.hgt"), // SE
-        ((35., -7.), "N35W007.hgt"),  // NW
-        ((-5., -7.), "S05W007.hgt"),  // SW
+        ((45., 1.4), "N45E001.hgt"),   // NE
+        ((-2.3, 87.), "S03E087.hgt"),  // SE
+        ((35., -7.), "N35W007.hgt"),   // NW
+        ((-5., -7.), "S05W007.hgt"),   // SW
+        ((-2.3, -7.5), "S03W008.hgt"), // SW with non-integer both
     ];
 
     for (coord, filename) in TEST_VALUES {
