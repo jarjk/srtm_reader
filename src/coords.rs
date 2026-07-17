@@ -33,9 +33,9 @@ impl Coord {
         self.with_lon(self.lon + lon.into())
     }
 
-    /// truncate both latitude and longitude
-    pub fn trunc(&self) -> (i8, i16) {
-        (self.lat.trunc() as i8, self.lon.trunc() as i16)
+    /// floor of both latitude and longitude
+    pub fn floor(&self) -> (i8, i16) {
+        (self.lat.floor() as i8, self.lon.floor() as i16)
     }
     /// get the name of the file, which shall include this `coord`s elevation
     ///
@@ -50,7 +50,7 @@ impl Coord {
     pub fn get_filename(self) -> String {
         let lat_ch = if self.lat >= 0. { 'N' } else { 'S' };
         let lon_ch = if self.lon >= 0. { 'E' } else { 'W' };
-        let (lat, lon) = self.trunc();
+        let (lat, lon) = self.floor();
         let (lat, lon) = (lat.abs(), lon.abs());
         format!("{lat_ch}{lat:02}{lon_ch}{lon:03}.hgt")
     }

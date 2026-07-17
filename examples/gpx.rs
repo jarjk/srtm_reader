@@ -61,7 +61,7 @@ fn add_elev(
         .filter(|wp| (wp.elevation.is_none() || overwrite) && !is_00(wp))
         .for_each(|wp| {
             let coord = xy_yx(wp);
-            if let Some(elev_data) = elev_data.get(&coord.trunc()) {
+            if let Some(elev_data) = elev_data.get(&coord.floor()) {
                 let elev = elev_data.get(coord);
                 let mut x = has_changed.lock().unwrap();
                 *x = true;
