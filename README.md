@@ -31,7 +31,9 @@ println!("elevation for coordinates ({coord:?}): {elevation:?}m");
 also, see [cli example](./examples/cli.rs) for a real-life one
 
 > [!NOTE]
-> a great source of DEM data, `.hgt` files is [Sonny's collection](https://sonny.4lima.de/)
+> great source of DEM data, `.hgt` files is
+> - the high quality [collection of Sonny](https://sonny.4lima.de/) for Europe
+> - and [the SRTM tile downloader](https://dwtkns.com/srtm30m/) or [AWS terrain tiles](https://registry.opendata.aws/terrain-tiles/) otherwise
 
 ## Dependents
 
