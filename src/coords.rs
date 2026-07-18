@@ -19,7 +19,7 @@ impl Coord {
             None
         }
     }
-    /// # panics
+    /// # Panics
     /// invalid earth coordinate
     pub fn new(lat: impl Into<f64>, lon: impl Into<f64>) -> Self {
         Self::opt_new(lat, lon).expect("latitude must be between -90 and 90 degrees, longitude must be between -180 and 180 degrees")
