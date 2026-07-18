@@ -43,7 +43,7 @@ Get elevation data for a coordinate from SRTM data (.hgt files).
 
 USAGE: elev_data <ARGS> [OPTIONS]
 
-ARGS:  <LATITUDE_FLOAT,LONGITUDE_FLOAT> 
+ARGS:  \"<LATITUDE_FLOAT, LONGITUDE_FLOAT>\" 
 
 OPTIONS:
        --elev_data_dir: <ELEVATION_DATA_DIR> or $ELEV_DATA_DIR set
