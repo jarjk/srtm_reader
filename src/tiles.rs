@@ -1,21 +1,21 @@
-use super::{Coord, Error};
+use super::{Coord, new_err};
 use crate::resolutions::Resolution;
-use std::{
-    fs::File,
-    io::{self, Read},
-    path::Path,
-};
+use std::{fs::File, io, path::Path};
 
 /// the SRTM tile, which contains the actual elevation data
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Tile {
+    /// bottom latitude of the
     /// north-south position of the [`Tile`]
     /// angle, ranges from −90° (south pole) to 90° (north pole), 0° is the Equator
     pub latitude: i8,
+    /// left longitude of the
     /// east-west position of the [`Tile`]
     /// angle, ranges from -180° to 180°
     pub longitude: i16,
+    /// [`Resolution`]
     pub resolution: Resolution,
+    /// each elevation record the tile contains
     pub data: Vec<i16>,
 }
 
@@ -31,26 +31,26 @@ impl Tile {
     }
 
     /// read an srtm: `.hgt` file, and create a [`Tile`] if possible
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tile, Error> {
-        let file = File::open(&path).map_err(|_| Error::NotFound)?;
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tile, io::Error> {
+        let file = File::open(&path)?;
         // eprintln!("file: {file:?}");
 
-        let f_len = file.metadata().map_err(|_| Error::Filesize)?.len();
-        let res = Resolution::try_from(f_len).map_err(|_| Error::Filesize)?;
+        let f_len = file.metadata()?.len();
+        let res = Resolution::try_from(f_len)?;
         // eprintln!("resolution: {res:?}");
 
         let (lat, lon) = Tile::get_lat_lon(&path)?;
 
-        let elevation_data = Self::parse_hgt(file, res).map_err(|_| Error::Read)?;
+        let elevation_data = Self::parse_hgt(file, res)?;
 
         Ok(Tile::new(lat, lon, res, elevation_data))
     }
 
-    /// the maximum height that this [`Tile`] contains
+    /// the maximum height that this [`Tile`] contains, falls back to 0
     pub fn max_height(&self) -> i16 {
         *self.data.iter().max().unwrap_or(&0)
     }
-    /// the minimum height that this [`Tile`] contains
+    /// the minimum height that this [`Tile`] contains, falls back to 0
     pub fn min_height(&self) -> i16 {
         *self.data.iter().min().unwrap_or(&0)
     }
@@ -87,7 +87,7 @@ impl Tile {
     }
 
     /// extract the heights from the `hgt` content
-    pub fn parse_hgt(mut reader: impl Read, res: Resolution) -> io::Result<Vec<i16>> {
+    pub fn parse_hgt(mut reader: impl io::Read, res: Resolution) -> io::Result<Vec<i16>> {
         let mut buffer = vec![0; res.total_len() * Resolution::BYTES_PER_ELEVATION];
         reader.read_exact(&mut buffer)?;
         let mut elevations = Vec::with_capacity(res.total_len());
@@ -99,21 +99,26 @@ impl Tile {
     }
 
     /// extract the latitude and longitude from a filepath
-    /// let ne = Path::new("N35E138.hgt");
-    /// assert_eq!(Tile::get_lat_lon(ne).unwrap(), (35, 138));
-    pub fn get_lat_lon(path: impl AsRef<Path>) -> Result<(i8, i16), Error> {
-        let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
-        let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
+    /// ```rust
+    /// let north_east = std::path::Path::new("N35E138.hgt");
+    /// assert_eq!(srtm_reader::Tile::get_lat_lon(north_east).unwrap(), (35, 138));
+    /// ```
+    pub fn get_lat_lon(path: impl AsRef<Path>) -> Result<(i8, i16), io::Error> {
+        let path = path.as_ref();
+        let stem = path.file_stem().ok_or(new_err!(of: "no file stem"))?;
+        let desc = stem
+            .to_str()
+            .ok_or(new_err!(InvalidData, "invalid UTF-8"))?;
         if desc.len() != 7 {
-            return Err(Error::ParseLatLong);
+            return Err(new_err!(InvalidData, "length isn't 7"));
         }
 
-        let get_char = |n| desc.chars().nth(n).ok_or(Error::ParseLatLong);
+        let get_char = |n| desc.chars().nth(n).ok_or(new_err!(InvalidData));
         let lat_sign = if get_char(0)? == 'N' { 1 } else { -1 };
-        let lat: i8 = desc[1..3].parse().map_err(|_| Error::ParseLatLong)?;
+        let lat: i8 = desc[1..3].parse().map_err(|e| new_err!(of: e))?;
 
         let lon_sign = if get_char(3)? == 'E' { 1 } else { -1 };
-        let lon: i16 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
+        let lon: i16 = desc[4..7].parse().map_err(|e| new_err!(of: e))?;
         Ok((lat_sign * lat, lon_sign * lon))
     }
 }
