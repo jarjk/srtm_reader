@@ -46,7 +46,7 @@ USAGE: elev_data <ARGS> [OPTIONS]
 ARGS:  \"<LATITUDE_FLOAT, LONGITUDE_FLOAT>\" 
 
 OPTIONS:
-       --elev_data_dir: <ELEVATION_DATA_DIR> or $ELEV_DATA_DIR set
+       --elev_data_dir: <ELEVATION_DATA_DIR> or $ELEV_DATA_DIR set, [default: .]
        {{ --min | --max }} true: get <boundary> of file",
         if cx.is_empty() { "unknown" } else { cx }
     );
@@ -69,11 +69,12 @@ fn main() -> io::Result<()> {
 
     // eprintln!("coord: {}", coord);
     let elev_data_dir = if let Some(arg_data_dir) = get_arg(&args, "--elev_data_dir") {
-        arg_data_dir
-    } else if let Some(env_data_dir) = option_env!("ELEV_DATA_DIR") {
+        arg_data_dir.to_owned()
+    } else if let Ok(env_data_dir) = std::env::var("ELEV_DATA_DIR") {
         env_data_dir
     } else {
-        quit_help("no elev_data_dir got");
+        eprintln!("no elev_data_dir got, falling back to default: .");
+        String::from(".")
     };
     let elev_data_dir = PathBuf::from(elev_data_dir);
     // eprintln!("is tiff: {is_tiff}");
@@ -81,7 +82,7 @@ fn main() -> io::Result<()> {
     let file_name = coord.0.get_filename();
     // eprintln!("file_name: {file_path}");
     let file_path = elev_data_dir.join(file_name);
-    // eprintln!("path to .hgt file: {}", file_path.display());
+    eprintln!("path to .hgt file: {}", file_path.display());
 
     let data = srtm_reader::Tile::from_file(file_path).unwrap();
     // eprintln!("resolution: {:?}", data.resolution);
