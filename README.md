@@ -45,3 +45,9 @@ also, see [cli example](./examples/cli.rs) for a real-life one
 This crate is a forked version of the [srtm crate](https://github.com/grtlr/srtm) which hasn't been updated since 2018.
 I've needed 0.5 angle support and also some further convenience methods for [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs),
 but my PR for the improvements hasn't been merged for a long-long time, so here we are.
+
+Other reference implementations:
+- [GDAL's srtm-hgt reader](https://github.com/OSGeo/gdal/blob/release/3.13/frmts/srtmhgt/srtmhgtdataset.cpp), the exact coordinate determining method is taken from here (*half-pixel offset*)
+- [valhalla's skadi](https://github.com/valhalla/valhalla/tree/master/src/skadi)
+
+Also used [QGIS](https://qgis.org/) for manual tests.
