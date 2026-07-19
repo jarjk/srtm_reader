@@ -29,10 +29,10 @@ impl Resolution {
 }
 
 impl TryFrom<u64> for Resolution {
-    type Error = ();
+    type Error = std::io::Error;
 
     fn try_from(len: u64) -> Result<Self, Self::Error> {
-        let len = usize::try_from(len).map_err(|_| ())?;
+        let len = usize::try_from(len).map_err(|e| crate::new_err!(of: e))?;
         if len == Resolution::SRTM05.total_len() * Self::BYTES_PER_ELEVATION {
             Ok(Resolution::SRTM05)
         } else if len == Resolution::SRTM1.total_len() * Self::BYTES_PER_ELEVATION {
@@ -40,8 +40,8 @@ impl TryFrom<u64> for Resolution {
         } else if len == Resolution::SRTM3.total_len() * Self::BYTES_PER_ELEVATION {
             Ok(Resolution::SRTM3)
         } else {
-            eprintln!("unknown filesize: {len}");
-            Err(())
+            let error = crate::new_err!(Unsupported, format!("unsupported filesize: {len}"));
+            Err(error)
         }
     }
 }
