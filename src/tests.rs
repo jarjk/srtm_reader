@@ -89,7 +89,7 @@ fn read_north_east() {
     assert_eq!(tile.data.len(), Resolution::SRTM1.total_len());
 
     let elev = tile.get(coord);
-    assert_eq!(elev, Some(&258)); // Validated manually with QGis
+    assert_eq!(elev, Some(&260)); // Validated with QGis/GDAL (half-pixel offset)
 }
 
 /// Test at exactly (44,15)

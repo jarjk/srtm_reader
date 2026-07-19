@@ -5,13 +5,9 @@ use std::{fs::File, io, path::Path};
 /// the SRTM tile, which contains the actual elevation data
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Tile {
-    /// bottom latitude of the
-    /// north-south position of the [`Tile`]
-    /// angle, ranges from −90° (south pole) to 90° (north pole), 0° is the Equator
+    /// South edge latitude (−90° to 90°, 0° is Equator)
     pub latitude: i8,
-    /// left longitude of the
-    /// east-west position of the [`Tile`]
-    /// angle, ranges from -180° to 180°
+    /// West edge longitude (-180° to 180°)
     pub longitude: i16,
     /// [`Resolution`]
     pub resolution: Resolution,
@@ -150,14 +146,18 @@ impl Tile {
         Coord { lat, lon }
     }
     /// calculate where this `coord` is located in this [`Tile`]
+    ///
+    /// Matches GDAL's geo-transform with half-pixel offset (pixel-as-point convention):
+    /// <https://github.com/OSGeo/gdal/blob/master/frmts/srtmhgt/gdal-srtmhgtdataset.cpp>
     fn get_offset(&self, coord: Coord) -> (usize, usize) {
         let origin = self.get_data_origin();
-        // eprintln!("origin: ({}, {})", origin.0, origin.1);
+
         // `extent` samples span exactly 1 degree, so there are `extent - 1` intervals between them
         let intervals = (self.resolution.extent() - 1) as f64;
+        let half_pixel = 0.5 / intervals;
 
-        let row = ((origin.lat - coord.lat) * intervals) as usize;
-        let col = ((coord.lon - origin.lon) * intervals) as usize;
+        let row = ((origin.lat + half_pixel - coord.lat) * intervals) as usize;
+        let col = ((coord.lon - origin.lon + half_pixel) * intervals) as usize;
         (row, col)
     }
 }
