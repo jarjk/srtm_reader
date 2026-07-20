@@ -12,7 +12,7 @@ A performant DTM[(srtm)](https://www.earthdata.nasa.gov/sensors/srtm) reader for
 
 ## Example
 
-```rust
+```rust,no_run
 use srtm_reader::*;
 
 let coord = Coord::new(44.32554, 15.92856);
@@ -21,7 +21,7 @@ let filename = coord.get_filename();
 // in this case, the filename will be:
 assert_eq!(filename, "N44E015.hgt");
 // load the srtm, .hgt file
-// NOTE: this file is included in the repo
+// NOTE: you need the actual file to be able to load it
 let tile = srtm_reader::Tile::from_file(filename).unwrap();
 // and finally, retrieve our elevation data
 let elevation = tile.get(coord);
