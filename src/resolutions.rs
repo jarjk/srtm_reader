@@ -11,7 +11,7 @@ impl Resolution {
     /// this many rows and columns are there in a standard SRTM1 file
     const DEFAULT_EXTENT: usize = 3600;
 
-    /// a record of elevation takes up this many bytes
+    /// a record of elevation takes up this many bytes: bigendian
     pub(crate) const BYTES_PER_ELEVATION: usize = 2;
 
     /// the number of rows and columns in an SRTM data file of [`Resolution`]
