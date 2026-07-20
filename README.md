@@ -35,6 +35,11 @@ also, see [cli example](./examples/cli.rs) for a real-life one
 > - the high quality [collection of Sonny](https://sonny.4lima.de/) for Europe
 > - and [the SRTM tile downloader](https://dwtkns.com/srtm30m/) or [AWS terrain tiles](https://registry.opendata.aws/terrain-tiles/) otherwise
 
+## Note
+
+Does use `unsafe` code to parse hgt, as it comes with massive performance improvements. (m1 mac: 2x)
+Unsafe logic simple to understand and well tested to ensure correctness.
+
 ## Dependents
 
 -   [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs)

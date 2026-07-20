@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 #![deny(clippy::unwrap_used)]
-#![deny(unsafe_code)]
 
 pub use coords::Coord;
 pub use resolutions::Resolution;

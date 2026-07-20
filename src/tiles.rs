@@ -77,12 +77,18 @@ impl Tile {
 
     /// extract the heights from the `hgt` content
     pub fn parse_hgt(mut reader: impl io::Read, res: Resolution) -> io::Result<Vec<i16>> {
-        let mut buffer = vec![0; res.total_len() * Resolution::BYTES_PER_ELEVATION];
-        reader.read_exact(&mut buffer)?;
-        let mut elevations = Vec::with_capacity(res.total_len());
-        for chunk in buffer.chunks_exact(2) {
-            let value = i16::from_be_bytes([chunk[0], chunk[1]]);
-            elevations.push(value);
+        let num_elev_items = res.total_len();
+        let byte_len = num_elev_items * Resolution::BYTES_PER_ELEVATION;
+        let mut elevations = vec![0i16; num_elev_items];
+        // SAFETY: `elevations` is a Vec<i16> so the pointer is aligned for i16,
+        // which implies alignment for u8. `byte_len` equals the Vec's byte size.
+        // `buf` is consumed (moved) by `read_exact`, so after it returns there
+        // is no outstanding &mut to the memory and `elevations` may be used again.
+        let buf =
+            unsafe { std::slice::from_raw_parts_mut(elevations.as_mut_ptr() as *mut u8, byte_len) };
+        reader.read_exact(buf)?;
+        for e in elevations.iter_mut() {
+            *e = i16::from_be(*e);
         }
         Ok(elevations)
     }
