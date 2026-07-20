@@ -1,4 +1,6 @@
 #![doc = include_str!("../README.md")]
+#![deny(clippy::unwrap_used)]
+#![deny(unsafe_code)]
 
 pub use coords::Coord;
 pub use resolutions::Resolution;
@@ -7,6 +9,7 @@ pub use tiles::Tile;
 pub mod coords;
 pub mod resolutions;
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests;
 pub mod tiles;
 

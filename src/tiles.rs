@@ -53,29 +53,22 @@ impl Tile {
 
     /// get the elevation of this `coord` from this [`Tile`]
     ///
-    /// # Panics
-    /// If this [`Tile`] doesn't contain `coord`'s elevation
-    /// *NOTE*: shouldn't happen if [`Coord::get_filename()`] was used
+    /// Returns `None` if the coord is outside this tile's bounds
+    /// or the elevation is an invalid value.
     pub fn get(&self, coord: impl Into<Coord>) -> Option<&i16> {
         let coord: Coord = coord.into();
-        let offset = self.get_offset(coord);
         let (lat, lon) = coord.floor();
-        assert!(
-            self.latitude <= lat && lat <= self.latitude + 1,
-            "hgt lat: {}, coord lat: {lat}",
-            self.latitude
-        );
-        assert!(
-            self.longitude <= lon && lon <= self.longitude + 1,
-            "hgt lon: {}, coord lon: {lon}",
-            self.longitude
-        );
+        if !(self.latitude..=self.latitude + 1).contains(&lat)
+            || !(self.longitude..=self.longitude + 1).contains(&lon)
+        {
+            return None;
+        }
+        let offset = self.get_offset(coord);
         let elev = self.get_at_offset(offset.1, offset.0);
         if elev.is_some_and(|e| *e == -9999 || *e == i16::MIN || *e == i16::MAX) {
-            eprintln!(
-                "WARNING: in file {:?} {coord:?} doesn't contain a valid elevation: {elev:?}",
-                Coord::new(self.latitude, self.longitude).get_filename()
-            );
+            // TODO: WARN the end-user somehow
+            // 1. should we make this an Err?
+            // 2. should we use `log`?
             None
         } else {
             elev
@@ -122,19 +115,16 @@ impl Tile {
 impl Tile {
     /// index `self` as if it was a matrix
     fn get_at_offset(&self, x: usize, y: usize) -> Option<&i16> {
-        self.data.get(self.idx(x, y))
+        self.data.get(self.idx(x, y)?)
     }
 
     /// convert an `x` `y` coordinate to an idx of `self`
-    /// # panics
-    /// if `self` doesn't contain the requested coordinate
-    fn idx(&self, x: usize, y: usize) -> usize {
-        assert!(
-            x < self.resolution.extent() && y < self.resolution.extent(),
-            "extent: {}, x: {x}, y: {y}",
-            self.resolution.extent()
-        );
-        y * self.resolution.extent() + x
+    fn idx(&self, x: usize, y: usize) -> Option<usize> {
+        if x >= self.resolution.extent() || y >= self.resolution.extent() {
+            None
+        } else {
+            Some(y * self.resolution.extent() + x)
+        }
     }
     /// get upper-left corner's latitude and longitude
     /// it's needed for [`Tile::get_offset()`]
