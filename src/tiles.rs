@@ -63,8 +63,8 @@ impl Tile {
         {
             return None;
         }
-        let offset = self.get_offset(coord);
-        let elev = self.get_at_offset(offset.1, offset.0);
+        let (row, col) = self.get_offset(coord)?;
+        let elev = self.get_at_offset(col, row);
         if elev.is_some_and(|e| *e == -9999 || *e == i16::MIN || *e == i16::MAX) {
             // TODO: WARN the end-user somehow
             // 1. should we make this an Err?
@@ -137,18 +137,26 @@ impl Tile {
     }
     /// calculate where this `coord` is located in this [`Tile`]
     ///
+    /// Returns `None` if the coordinate maps outside the tile's data grid.
+    ///
     /// Matches GDAL's geo-transform with half-pixel offset (pixel-as-point convention):
     /// <https://github.com/OSGeo/gdal/blob/master/frmts/srtmhgt/gdal-srtmhgtdataset.cpp>
-    fn get_offset(&self, coord: Coord) -> (usize, usize) {
+    fn get_offset(&self, coord: Coord) -> Option<(usize, usize)> {
         let origin = self.get_data_origin();
 
         // `extent` samples span exactly 1 degree, so there are `extent - 1` intervals between them
         let intervals = (self.resolution.extent() - 1) as f64;
         let half_pixel = 0.5 / intervals;
 
-        let row = ((origin.lat + half_pixel - coord.lat) * intervals) as usize;
-        let col = ((coord.lon - origin.lon + half_pixel) * intervals) as usize;
-        (row, col)
+        let row_f = (origin.lat + half_pixel - coord.lat) * intervals;
+        let col_f = (coord.lon - origin.lon + half_pixel) * intervals;
+
+        let extent = self.resolution.extent();
+        if row_f < 0.0 || col_f < 0.0 || row_f >= extent as f64 || col_f >= extent as f64 {
+            return None;
+        }
+
+        Some((row_f as usize, col_f as usize))
     }
 }
 
@@ -220,7 +228,7 @@ mod private_tests {
         let c = Coord::new(45.0, 15.0);
         assert_eq!(c, tile.get_data_origin());
         assert_eq!(tile.idx(0, 0), Some(0));
-        assert_eq!(tile.get_offset(c), (0, 0));
+        assert_eq!(tile.get_offset(c), Some((0, 0)));
         assert_eq!(tile.get_at_offset(0, 0), Some(&0));
         assert_eq!(tile.get(c), Some(&0));
 
@@ -228,20 +236,20 @@ mod private_tests {
         let e = EXT - 1;
         let c = Coord::new(45.0, 16.0);
         assert_eq!(tile.idx(e, 0), Some(e));
-        assert_eq!(tile.get_offset(c), (0, e));
+        assert_eq!(tile.get_offset(c), Some((0, e)));
         assert_eq!(tile.get(c), Some(e as i16).as_ref());
 
         // bottom left
         let c = Coord::new(44.0, 15.0);
         assert_eq!(Coord::new(tile.latitude, tile.longitude), c);
         assert_eq!(tile.idx(0, e), Some(e * EXT));
-        assert_eq!(tile.get_offset(c), (e, 0));
+        assert_eq!(tile.get_offset(c), Some((e, 0)));
         assert_eq!(tile.get(c), Some((e * EXT) as i16).as_ref());
 
         // bottom right
         let c = Coord::new(44.0, 16.0);
         assert_eq!(tile.idx(e, e), Some(EXT * EXT - 1));
-        assert_eq!(tile.get_offset(c), (e, e));
+        assert_eq!(tile.get_offset(c), Some((e, e)));
         assert_eq!(tile.get(c), Some((EXT * EXT - 1) as i16).as_ref());
     }
 
