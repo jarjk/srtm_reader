@@ -151,3 +151,140 @@ impl Tile {
         (row, col)
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod private_tests {
+    use super::*;
+    use std::{io::Write, path::PathBuf, sync::LazyLock};
+
+    const EXT: usize = Resolution::SRTM3.extent();
+
+    static TEST_TILE: LazyLock<Tile> = LazyLock::new(make_tile);
+
+    // TODO: should we promote this to `Tile::write_to()`?
+    fn write_tmp(t: Tile) -> PathBuf {
+        let mut buffer =
+            Vec::with_capacity(t.resolution.total_len() * Resolution::BYTES_PER_ELEVATION);
+        let fname = Coord::new(t.latitude, t.longitude).get_filename();
+
+        eprintln!("writing data to buffer...");
+        for elev in t.data {
+            buffer.write_all(&elev.to_be_bytes()).unwrap();
+        }
+        eprintln!("done, written {} bytes to buffer", buffer.len());
+
+        let tmp_path = std::env::temp_dir().join(fname);
+        eprintln!("writing data to path: {tmp_path:?}");
+        std::fs::write(&tmp_path, buffer).unwrap();
+        eprintln!("done.");
+        tmp_path
+    }
+
+    /// Every cell holds `(y * extent + x) as i16` so positions are uniquely identifiable.
+    fn make_tile() -> Tile {
+        let res = Resolution::SRTM3;
+        // WARN: items will quickly start to overflow => wrap around, that doesn't matter though
+        let data: Vec<i16> = (0..EXT * EXT).map(|v| v as i16).collect();
+        Tile::new(44, 15, res, data)
+    }
+
+    #[test]
+    fn roundtrip() {
+        let tile = TEST_TILE.clone();
+        eprintln!("created test tile: {tile:?}");
+        let tmp_path = write_tmp(tile.clone());
+        let new_tile = Tile::from_file(tmp_path).unwrap();
+        assert_eq!(tile.max_height(), new_tile.max_height());
+        assert_eq!(tile.min_height(), new_tile.min_height());
+        assert_eq!(tile.get_data_origin(), new_tile.get_data_origin());
+        assert_eq!(tile, new_tile);
+    }
+
+    #[test]
+    fn corners() {
+        let tile = &TEST_TILE;
+
+        let coord = Coord::new(44.4480, 15.0733);
+        let fname = coord.get_filename();
+        assert_eq!(fname, "N44E015.hgt");
+        assert_eq!(tile.latitude, 44);
+        assert_eq!(tile.longitude, 15);
+        assert_eq!(tile.resolution, Resolution::SRTM3);
+        assert_eq!(tile.data.len(), Resolution::SRTM3.total_len());
+
+        let elev = tile.get(coord);
+        assert_eq!(elev, Some(&8718)); // Validated with QGis/GDAL (half-pixel offset)
+
+        // top left, origin
+        let c = Coord::new(45.0, 15.0);
+        assert_eq!(c, tile.get_data_origin());
+        assert_eq!(tile.idx(0, 0), Some(0));
+        assert_eq!(tile.get_offset(c), (0, 0));
+        assert_eq!(tile.get_at_offset(0, 0), Some(&0));
+        assert_eq!(tile.get(c), Some(&0));
+
+        // top right
+        let e = EXT - 1;
+        let c = Coord::new(45.0, 16.0);
+        assert_eq!(tile.idx(e, 0), Some(e));
+        assert_eq!(tile.get_offset(c), (0, e));
+        assert_eq!(tile.get(c), Some(e as i16).as_ref());
+
+        // bottom left
+        let c = Coord::new(44.0, 15.0);
+        assert_eq!(Coord::new(tile.latitude, tile.longitude), c);
+        assert_eq!(tile.idx(0, e), Some(e * EXT));
+        assert_eq!(tile.get_offset(c), (e, 0));
+        assert_eq!(tile.get(c), Some((e * EXT) as i16).as_ref());
+
+        // bottom right
+        let c = Coord::new(44.0, 16.0);
+        assert_eq!(tile.idx(e, e), Some(EXT * EXT - 1));
+        assert_eq!(tile.get_offset(c), (e, e));
+        assert_eq!(tile.get(c), Some((EXT * EXT - 1) as i16).as_ref());
+    }
+
+    #[test]
+    fn arbitrary_offset() {
+        let tile = &TEST_TILE;
+        // idx(3,2) = 2*1201+3 = 2405
+        assert_eq!(tile.idx(3, 2), Some(2405));
+        assert_eq!(tile.get_at_offset(3, 2), Some(&2405));
+    }
+
+    #[test]
+    fn out_of_bounds() {
+        let tile = &TEST_TILE;
+        assert_eq!(tile.get(Coord::new(43.9, 15.5)), None); // lat low
+        assert_eq!(tile.get(Coord::new(46.0, 15.5)), None); // lat high
+        assert_eq!(tile.get(Coord::new(44.5, 14.9)), None); // lon low
+        assert_eq!(tile.get(Coord::new(44.5, 16.1)), None); // lon high
+    }
+
+    #[test]
+    fn oob_idx() {
+        let tile = &TEST_TILE;
+        assert_eq!(tile.idx(EXT, 0), None);
+        assert_eq!(tile.idx(0, EXT), None);
+        assert_eq!(tile.idx(EXT, EXT), None);
+        assert_eq!(tile.get_at_offset(EXT, 0), None);
+        assert_eq!(tile.get_at_offset(0, EXT), None);
+    }
+
+    fn tile_with_hole(val: i16) -> Tile {
+        let res = Resolution::SRTM3;
+        let ext = res.extent();
+        let mut data: Vec<i16> = (0..ext * ext).map(|v| v as i16).collect();
+        data[0] = val;
+        Tile::new(44, 15, res, data)
+    }
+
+    #[test]
+    fn tile_has_a_hole() {
+        let c = Coord::new(45.0, 15.0);
+        assert_eq!(tile_with_hole(-9999).get(c), None);
+        assert_eq!(tile_with_hole(i16::MIN).get(c), None);
+        assert_eq!(tile_with_hole(i16::MAX).get(c), None);
+    }
+}

@@ -17,5 +17,5 @@ license = "BSD-3-Clause"
 exclude = ["*.hgt"]
 
 [dev-dependencies]
-gpx = "0.10.0"
-rayon = "1.12.0"
+gpx = "0.10"
+rayon = "1.12"
