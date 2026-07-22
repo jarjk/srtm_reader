@@ -1,1 +1,5 @@
 target/
+# this is a lib only crate, lock-file not needed
+Cargo.lock
+# usually huge, shouldn't be included in the repo
+**.hgt
