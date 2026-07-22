@@ -12,7 +12,7 @@ A performant DTM[(srtm)](https://www.earthdata.nasa.gov/sensors/srtm) reader for
 
 ## Example
 
-```rust
+```rust,no_run
 use srtm_reader::*;
 
 let coord = Coord::new(44.32554, 15.92856);
@@ -21,7 +21,7 @@ let filename = coord.get_filename();
 // in this case, the filename will be:
 assert_eq!(filename, "N44E015.hgt");
 // load the srtm, .hgt file
-// NOTE: this file is included in the repo
+// NOTE: you need the actual file to be able to load it
 let tile = srtm_reader::Tile::from_file(filename).unwrap();
 // and finally, retrieve our elevation data
 let elevation = tile.get(coord);
@@ -31,7 +31,14 @@ println!("elevation for coordinates ({coord:?}): {elevation:?}m");
 also, see [cli example](./examples/cli.rs) for a real-life one
 
 > [!NOTE]
-> a great source of DEM data, `.hgt` files is [Sonny's collection](https://sonny.4lima.de/)
+> great source of DEM data, `.hgt` files are
+> - the high quality [collection of Sonny](https://sonny.4lima.de/) for Europe
+> - and [the SRTM tile downloader](https://dwtkns.com/srtm30m/) or [AWS terrain tiles](https://registry.opendata.aws/terrain-tiles/) otherwise
+
+## Note
+
+Does use `unsafe` code to parse hgt, as it comes with massive performance improvements. (m1 mac: 2x)
+Unsafe logic simple to understand and well tested to ensure correctness.
 
 ## Dependents
 
@@ -43,3 +50,9 @@ also, see [cli example](./examples/cli.rs) for a real-life one
 This crate is a forked version of the [srtm crate](https://github.com/grtlr/srtm) which hasn't been updated since 2018.
 I've needed 0.5 angle support and also some further convenience methods for [fit2gpx-rs](https://github.com/jarjk/fit2gpx-rs),
 but my PR for the improvements hasn't been merged for a long-long time, so here we are.
+
+Other reference implementations:
+- [GDAL's srtm-hgt reader](https://github.com/OSGeo/gdal/blob/release/3.13/frmts/srtmhgt/srtmhgtdataset.cpp), the exact coordinate determining method is taken from here (*half-pixel offset*)
+- [valhalla's skadi](https://github.com/valhalla/valhalla/tree/master/src/skadi)
+
+Also used [QGIS](https://qgis.org/) for manual tests.
