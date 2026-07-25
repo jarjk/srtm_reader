@@ -50,15 +50,15 @@ fn correct_coords() {
     let c = Coord::new(90, -180).with_lat(0.3).with_lon(83.3);
     assert_eq!(Coord::new(0.3, 83.3), c);
 
-    let c: Coord = (90, -180).into();
+    let c = Coord::new(90, -180);
     let c = c.with_lat(0.3).with_lon(83.3);
     assert_eq!(Coord::new(0.3, 83.3), c);
 
-    let c: Coord = (90, -180).into();
+    let c = Coord::new(90, -180);
     let c = c.with_lat(0.3).with_lon(83.3);
     assert_eq!(Coord::new(0.3, 83.3), c);
 
-    let c: Coord = (-90, 180).into();
+    let c = Coord::new(-90, 180);
     let c = c.add_to_lat(0.3252).add_to_lon(-3.2);
     assert_eq!(Coord::new(-89.6748, 176.8), c);
 }
@@ -73,7 +73,7 @@ fn file_names() {
         ((-2.3, -7.5), "S03W008.hgt"), // SW with non-integer both
     ];
 
-    for (coord, filename) in TEST_VALUES {
-        assert_eq!(&Coord::from(*coord).get_filename(), filename);
+    for ((lat, lon), filename) in TEST_VALUES {
+        assert_eq!(&Coord::new(*lat, *lon).get_filename(), filename);
     }
 }
