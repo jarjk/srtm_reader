@@ -104,8 +104,9 @@ impl Tile {
         let desc = stem
             .to_str()
             .ok_or(new_err!(InvalidData, "invalid UTF-8"))?;
-        if desc.len() != 7 {
-            return Err(new_err!(InvalidData, "length isn't 7"));
+
+        if !desc.is_ascii() || desc.len() != 7 {
+            return Err(new_err!(InvalidData, "filename must be 7 ASCII characters"));
         }
 
         let get_char = |n| desc.chars().nth(n).ok_or(new_err!(InvalidData));
