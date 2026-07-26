@@ -55,7 +55,7 @@ impl Tile {
     ///
     /// Returns `None` if the coord is outside this tile's bounds
     /// or the elevation is an invalid value.
-    pub fn get(&self, coord: impl Into<Coord>) -> Option<&i16> {
+    pub fn get(&self, coord: impl Into<Coord>) -> Option<i16> {
         let coord: Coord = coord.into();
         let (lat, lon) = coord.floor();
         if !(self.latitude..=self.latitude + 1).contains(&lat)
@@ -71,7 +71,7 @@ impl Tile {
             // 2. should we use `log`?
             None
         } else {
-            elev
+            elev.copied()
         }
     }
 
@@ -104,8 +104,9 @@ impl Tile {
         let desc = stem
             .to_str()
             .ok_or(new_err!(InvalidData, "invalid UTF-8"))?;
-        if desc.len() != 7 {
-            return Err(new_err!(InvalidData, "length isn't 7"));
+
+        if !desc.is_ascii() || desc.len() != 7 {
+            return Err(new_err!(InvalidData, "filename must be 7 ASCII characters"));
         }
 
         let get_char = |n| desc.chars().nth(n).ok_or(new_err!(InvalidData));
@@ -228,7 +229,7 @@ mod private_tests {
         assert_eq!(tile.data.len(), Resolution::SRTM3.total_len());
 
         let elev = tile.get(coord);
-        assert_eq!(elev, Some(&8718)); // Validated with QGis/GDAL (half-pixel offset)
+        assert_eq!(elev, Some(8718)); // Validated with QGis/GDAL (half-pixel offset)
 
         // top left, origin
         let c = Coord::new(45.0, 15.0);
@@ -236,27 +237,27 @@ mod private_tests {
         assert_eq!(tile.idx(0, 0), Some(0));
         assert_eq!(tile.get_offset(c), Some((0, 0)));
         assert_eq!(tile.get_at_offset(0, 0), Some(&0));
-        assert_eq!(tile.get(c), Some(&0));
+        assert_eq!(tile.get(c), Some(0));
 
         // top right
         let e = EXT - 1;
         let c = Coord::new(45.0, 16.0);
         assert_eq!(tile.idx(e, 0), Some(e));
         assert_eq!(tile.get_offset(c), Some((0, e)));
-        assert_eq!(tile.get(c), Some(e as i16).as_ref());
+        assert_eq!(tile.get(c), Some(e as i16));
 
         // bottom left
         let c = Coord::new(44.0, 15.0);
         assert_eq!(Coord::new(tile.latitude, tile.longitude), c);
         assert_eq!(tile.idx(0, e), Some(e * EXT));
         assert_eq!(tile.get_offset(c), Some((e, 0)));
-        assert_eq!(tile.get(c), Some((e * EXT) as i16).as_ref());
+        assert_eq!(tile.get(c), Some((e * EXT) as i16));
 
         // bottom right
         let c = Coord::new(44.0, 16.0);
         assert_eq!(tile.idx(e, e), Some(EXT * EXT - 1));
         assert_eq!(tile.get_offset(c), Some((e, e)));
-        assert_eq!(tile.get(c), Some((EXT * EXT - 1) as i16).as_ref());
+        assert_eq!(tile.get(c), Some((EXT * EXT - 1) as i16));
     }
 
     #[test]

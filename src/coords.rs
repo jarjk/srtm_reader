@@ -64,10 +64,3 @@ impl Coord {
         format!("{lat_ch}{lat:02}{lon_ch}{lon:03}.hgt")
     }
 }
-
-impl<F1: Into<f64>, F2: Into<f64>> From<(F1, F2)> for Coord {
-    fn from(value: (F1, F2)) -> Self {
-        let (lat, lon) = (value.0.into(), value.1.into());
-        Coord { lat, lon }
-    }
-}

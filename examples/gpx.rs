@@ -30,7 +30,7 @@ fn read_tiles(
 
     needs
         .par_iter()
-        .map(|c| srtm_reader::Coord::from(*c).get_filename())
+        .map(|(lat, lon)| srtm_reader::Coord::new(*lat, *lon).get_filename())
         .map(|t| elev_data_dir.join(t))
         .flat_map(|p| {
             srtm_reader::Tile::from_file(&p)
@@ -55,7 +55,7 @@ fn add_elev(
     // coord is x,y but we need y,x
     let xy_yx = |wp: &Waypoint| -> srtm_reader::Coord {
         let (x, y) = wp.point().x_y();
-        (y, x).into()
+        srtm_reader::Coord::new(y, x)
     };
     wps.into_par_iter()
         .filter(|wp| (wp.elevation.is_none() || overwrite) && !is_00(wp))
@@ -65,7 +65,7 @@ fn add_elev(
                 let elev = elev_data.get(coord);
                 let mut x = has_changed.lock().unwrap();
                 *x = true;
-                wp.elevation = elev.map(|x| *x as f64);
+                wp.elevation = elev.map(|x| x as f64);
             }
         });
     let x = has_changed.lock().unwrap();
