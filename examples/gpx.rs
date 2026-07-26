@@ -65,7 +65,7 @@ fn add_elev(
                 let elev = elev_data.get(coord);
                 let mut x = has_changed.lock().unwrap();
                 *x = true;
-                wp.elevation = elev.map(|x| *x as f64);
+                wp.elevation = elev.map(|x| x as f64);
             }
         });
     let x = has_changed.lock().unwrap();
