@@ -51,27 +51,35 @@ impl Tile {
         *self.data.iter().min().unwrap_or(&0)
     }
 
+    /// Same as [`Self::get`] without bounds or void checks.
+    pub fn get_unchecked(&self, coord: Coord) -> i16 {
+        let (row, col) = self.get_offset(coord);
+        let idx = row * self.resolution.extent() + col;
+        self.data[idx]
+    }
+
     /// get the elevation of this `coord` from this [`Tile`]
     ///
     /// Returns `None` if the coord is outside this tile's bounds
     /// or the elevation is an invalid value.
-    pub fn get(&self, coord: impl Into<Coord>) -> Option<i16> {
-        let coord: Coord = coord.into();
-        let (lat, lon) = coord.floor();
-        if !(self.latitude..=self.latitude + 1).contains(&lat)
-            || !(self.longitude..=self.longitude + 1).contains(&lon)
+    pub fn get(&self, coord: Coord) -> Option<i16> {
+        if !coord.lat.is_finite()
+            || !coord.lon.is_finite()
+            || coord.lat < f64::from(self.latitude)
+            || coord.lat > f64::from(self.latitude) + 1.
+            || coord.lon < f64::from(self.longitude)
+            || coord.lon > f64::from(self.longitude) + 1.
         {
             return None;
         }
-        let (row, col) = self.get_offset(coord)?;
-        let elev = self.get_at_offset(col, row);
-        if elev.is_some_and(|e| *e == -9999 || *e == i16::MIN || *e == i16::MAX) {
+        let elev = self.get_unchecked(coord);
+        if elev == i16::MIN {
             // TODO: WARN the end-user somehow
             // 1. should we make this an Err?
             // 2. should we use `log`?
             None
         } else {
-            elev.copied()
+            Some(elev)
         }
     }
 
@@ -120,19 +128,6 @@ impl Tile {
 }
 // impl for non-pub fn-s
 impl Tile {
-    /// index `self` as if it was a matrix
-    fn get_at_offset(&self, x: usize, y: usize) -> Option<&i16> {
-        self.data.get(self.idx(x, y)?)
-    }
-
-    /// convert an `x` `y` coordinate to an idx of `self`
-    fn idx(&self, x: usize, y: usize) -> Option<usize> {
-        if x >= self.resolution.extent() || y >= self.resolution.extent() {
-            None
-        } else {
-            Some(y * self.resolution.extent() + x)
-        }
-    }
     /// get upper-left corner's latitude and longitude
     /// it's needed for [`Tile::get_offset()`]
     /// The upper left corner is the value at (0, 0) in the
@@ -144,26 +139,18 @@ impl Tile {
     }
     /// calculate where this `coord` is located in this [`Tile`]
     ///
-    /// Returns `None` if the coordinate maps outside the tile's data grid.
-    ///
     /// Matches GDAL's geo-transform with half-pixel offset (pixel-as-point convention):
     /// <https://github.com/OSGeo/gdal/blob/master/frmts/srtmhgt/gdal-srtmhgtdataset.cpp>
-    fn get_offset(&self, coord: Coord) -> Option<(usize, usize)> {
+    fn get_offset(&self, coord: Coord) -> (usize, usize) {
         let origin = self.get_data_origin();
 
         // `extent` samples span exactly 1 degree, so there are `extent - 1` intervals between them
         let intervals = (self.resolution.extent() - 1) as f64;
-        let half_pixel = 0.5 / intervals;
 
-        let row_f = (origin.lat + half_pixel - coord.lat) * intervals;
-        let col_f = (coord.lon - origin.lon + half_pixel) * intervals;
+        let row = ((origin.lat - coord.lat) * intervals + 0.5) as usize;
+        let col = ((coord.lon - origin.lon) * intervals + 0.5) as usize;
 
-        let extent = self.resolution.extent();
-        if row_f < 0.0 || col_f < 0.0 || row_f >= extent as f64 || col_f >= extent as f64 {
-            return None;
-        }
-
-        Some((row_f as usize, col_f as usize))
+        (row, col)
     }
 }
 
@@ -234,57 +221,37 @@ mod private_tests {
         // top left, origin
         let c = Coord::new(45.0, 15.0);
         assert_eq!(c, tile.get_data_origin());
-        assert_eq!(tile.idx(0, 0), Some(0));
-        assert_eq!(tile.get_offset(c), Some((0, 0)));
-        assert_eq!(tile.get_at_offset(0, 0), Some(&0));
+        assert_eq!(tile.get_offset(c), (0, 0));
         assert_eq!(tile.get(c), Some(0));
 
         // top right
         let e = EXT - 1;
         let c = Coord::new(45.0, 16.0);
-        assert_eq!(tile.idx(e, 0), Some(e));
-        assert_eq!(tile.get_offset(c), Some((0, e)));
+        assert_eq!(tile.get_offset(c), (0, e));
         assert_eq!(tile.get(c), Some(e as i16));
 
         // bottom left
         let c = Coord::new(44.0, 15.0);
         assert_eq!(Coord::new(tile.latitude, tile.longitude), c);
-        assert_eq!(tile.idx(0, e), Some(e * EXT));
-        assert_eq!(tile.get_offset(c), Some((e, 0)));
+        assert_eq!(tile.get_offset(c), (e, 0));
         assert_eq!(tile.get(c), Some((e * EXT) as i16));
 
         // bottom right
         let c = Coord::new(44.0, 16.0);
-        assert_eq!(tile.idx(e, e), Some(EXT * EXT - 1));
-        assert_eq!(tile.get_offset(c), Some((e, e)));
+        assert_eq!(tile.get_offset(c), (e, e));
         assert_eq!(tile.get(c), Some((EXT * EXT - 1) as i16));
-    }
-
-    #[test]
-    fn arbitrary_offset() {
-        let tile = &TEST_TILE;
-        // idx(3,2) = 2*1201+3 = 2405
-        assert_eq!(tile.idx(3, 2), Some(2405));
-        assert_eq!(tile.get_at_offset(3, 2), Some(&2405));
     }
 
     #[test]
     fn out_of_bounds() {
         let tile = &TEST_TILE;
-        assert_eq!(tile.get(Coord::new(43.9, 15.5)), None); // lat low
-        assert_eq!(tile.get(Coord::new(46.0, 15.5)), None); // lat high
-        assert_eq!(tile.get(Coord::new(44.5, 14.9)), None); // lon low
-        assert_eq!(tile.get(Coord::new(44.5, 16.1)), None); // lon high
-    }
-
-    #[test]
-    fn oob_idx() {
-        let tile = &TEST_TILE;
-        assert_eq!(tile.idx(EXT, 0), None);
-        assert_eq!(tile.idx(0, EXT), None);
-        assert_eq!(tile.idx(EXT, EXT), None);
-        assert_eq!(tile.get_at_offset(EXT, 0), None);
-        assert_eq!(tile.get_at_offset(0, EXT), None);
+        // without the checks of Coord::new
+        let coord_new = |lat, lon| Coord { lat, lon };
+        assert_eq!(tile.get(coord_new(f64::NAN, f64::NAN)), None); // NaN
+        assert_eq!(tile.get(coord_new(43.9, 15.5)), None); // lat low
+        assert_eq!(tile.get(coord_new(46.0, 15.5)), None); // lat high
+        assert_eq!(tile.get(coord_new(44.5, 14.9)), None); // lon low
+        assert_eq!(tile.get(coord_new(44.5, 16.1)), None); // lon high
     }
 
     fn tile_with_hole(val: i16) -> Tile {
@@ -298,8 +265,8 @@ mod private_tests {
     #[test]
     fn tile_has_a_hole() {
         let c = Coord::new(45.0, 15.0);
-        assert_eq!(tile_with_hole(-9999).get(c), None);
+        // assert_eq!(tile_with_hole(-9999).get(c), None); // non-standard
         assert_eq!(tile_with_hole(i16::MIN).get(c), None);
-        assert_eq!(tile_with_hole(i16::MAX).get(c), None);
+        // assert_eq!(tile_with_hole(i16::MAX).get(c), None); // non-standard
     }
 }

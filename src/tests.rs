@@ -30,6 +30,8 @@ fn extents() {
 #[test]
 fn wrong_coords() {
     let coord_new_none = |lat: f64, lon: f64| assert!(Coord::opt_new(lat, lon).is_none());
+    coord_new_none(-190., f64::NAN);
+    coord_new_none(f64::NAN, 42.4);
     coord_new_none(-190., 42.4);
     coord_new_none(180., -42.4);
     coord_new_none(-90., 181.);

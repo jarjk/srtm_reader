@@ -11,12 +11,18 @@ pub struct Coord {
 
 impl Coord {
     /// return `None` on invalid earth coordinates
+    ///
+    /// *PERF:* way slower than plain `Coord { lat, lon }` init due to bound checks
     pub fn opt_new(lat: impl Into<f64>, lon: impl Into<f64>) -> Option<Self> {
         let (lat, lon) = (lat.into(), lon.into());
-        if (-90. ..=90.).contains(&lat) && (-180. ..=180.).contains(&lon) {
-            Some(Self { lat, lon })
-        } else {
+        if !lat.is_finite()
+            || !lon.is_finite()
+            || (lat < -90. || 90. < lat)
+            || (lon < -180. || 180. < lon)
+        {
             None
+        } else {
+            Some(Self { lat, lon })
         }
     }
     /// # Panics
